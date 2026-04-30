@@ -1,0 +1,31 @@
+diff --git a/src/cmd/compile/internal/ssa/prove.go b/src/cmd/compile/internal/ssa/prove.go
+index de16dfb..49295ca 100644
+--- a/src/cmd/compile/internal/ssa/prove.go
++++ b/src/cmd/compile/internal/ssa/prove.go
+@@ -2169,20 +2169,18 @@ func (ft *factsTable) detectSubRelations(v *Value) {
+ 	// things smaller.
+ 	if yLim.min >= 0 {
+ 		ft.update(v.Block, v, x, signed, lt|eq)
+-		// TODO: is this worth it?
+-		//if yLim.min > 0 {
+-		//	ft.update(v.Block, v, x, signed, lt)
+-		//}
++		if yLim.min > 0 {
++			ft.update(v.Block, v, x, signed, lt)
++		}
+ 	}
+ 
+ 	// Subtracting a number from a bigger one
+ 	// can't go below 0.
+ 	if ft.orderS.OrderedOrEqual(y, x) {
+ 		ft.setNonNegative(v)
+-		// TODO: is this worth it?
+-		//if ft.orderS.Ordered(y, x) {
+-		//	ft.signedMin(v, 1)
+-		//}
++		if ft.orderS.Ordered(y, x) {
++			ft.signedMin(v, 1)
++		}
+ 	}
+ }
+ 
