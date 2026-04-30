@@ -6,108 +6,92 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T17:06:00Z",
+    "last_validated": "2026-04-30T17:32:00Z",
     "tests_passed": ["server/storage/mvcc"],
     "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override"
   },
   "hot_paths": [
-    {"func": "cmpbody", "flat_pct": 15.35, "cum_pct": 15.35, "pkg": "runtime", "note": "Assembly; not optimizable via compiler"},
-    {"func": "(*keyIndex).compact", "flat_pct": 9.78, "cum_pct": 33.43, "pkg": "mvcc"},
-    {"func": "(*keyIndex).Less", "flat_pct": 8.78, "cum_pct": 24.43, "pkg": "mvcc", "note": "bytes.Compare is assembly intrinsic"},
-    {"func": "(*generation).walk", "flat_pct": 7.82, "cum_pct": 17.85, "pkg": "mvcc"},
-    {"func": "items.find.func1", "flat_pct": 2.68, "cum_pct": 26.52, "pkg": "btree"},
-    {"func": "(*node).get", "flat_pct": 1.98, "cum_pct": 27.25, "pkg": "btree"},
-    {"func": "items.find", "flat_pct": 1.22, "cum_pct": 29.90, "pkg": "btree"},
-    {"func": "(*node).iterate", "flat_pct": 1.15, "cum_pct": 39.34, "pkg": "btree"},
-    {"func": "sort.Search", "flat_pct": 1.13, "cum_pct": 27.65, "pkg": "sort"},
-    {"func": "(*keyIndex).doCompact", "flat_pct": 0.49, "cum_pct": 18.33, "pkg": "mvcc"}
+    {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
+    {"func": "(*generation).walk", "flat_pct": 9.50, "cum_pct": 20.12, "pkg": "mvcc"},
+    {"func": "(*keyIndex).Less", "flat_pct": 7.72, "cum_pct": 20.71, "pkg": "mvcc", "note": "bytes.Compare intrinsic"},
+    {"func": "items.find.func1", "flat_pct": 2.01, "cum_pct": 22.36, "pkg": "btree", "note": "already inlined"},
+    {"func": "(*node).get", "flat_pct": 1.34, "cum_pct": 22.86, "pkg": "btree"},
+    {"func": "sort.Search", "flat_pct": 1.00, "cum_pct": 23.36, "pkg": "sort", "note": "already inlined"},
+    {"func": "items.find", "flat_pct": 1.13, "cum_pct": 25.30, "pkg": "btree"},
+    {"func": "(*node).iterate", "flat_pct": 1.37, "cum_pct": 44.11, "pkg": "btree"},
+    {"func": "(*keyIndex).doCompact", "flat_pct": 0.47, "cum_pct": 20.58, "pkg": "mvcc"},
+    {"func": "bytes.Compare", "flat_pct": 0.09, "cum_pct": 12.99, "pkg": "bytes", "note": "assembly intrinsic"}
   ],
   "profiling": {
-    "date": "2026-04-30T17:06:00Z",
-    "benchmarks_profiled": ["mvcc BenchmarkIndex*", "wal BenchmarkWrite*"],
-    "mvcc_total_samples": "96.38s",
-    "wal_finding": "WAL dominated by syscalls (36.8%) and GC (19.3%) - limited codegen opportunity"
+    "date": "2026-04-30T17:40:00Z",
+    "benchmarks_profiled": ["mvcc BenchmarkIndex*"],
+    "mvcc_total_samples": "79.06s",
+    "note": "Compact benchmarks dominate (~59% cum in benchmarkIndexCompact). Hot path is btree iteration + keyIndex.compact."
   },
   "optimization_backlog": [
     {
       "priority": 1,
-      "name": "inline-items-find",
-      "desc": "items.find cost 119 (budget 80). sort.Search inlined (cost 56) + closure (cost 39) + overhead (24). Reducing closure cost for closures passed to inlined funcs could help.",
-      "compiler_file": "cmd/compile/internal/inline/inl.go",
-      "expected_impact": "2-5% on Get/Compact benchmarks (eliminates function call in btree binary search)",
-      "risk": "medium - needs careful cost model change",
-      "status": "untried"
-    },
-    {
-      "priority": 2,
-      "name": "bce-walk-alias-analysis",
-      "desc": "generation.walk g.revs[l-i-1] bounds check NOT eliminable by prove pass because closure f could modify g.revs. Would require proving closure doesn't escape/modify receiver. Fundamental alias analysis limitation.",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go + escape analysis",
-      "expected_impact": "1-2% on compact benchmarks if achievable",
-      "risk": "high - requires deep alias analysis changes",
-      "status": "blocked_by_design"
-    },
-    {
-      "priority": 3,
-      "name": "inline-findGeneration",
-      "desc": "(*keyIndex).findGeneration cost 81 (budget 80) - just 1 over! Called from hot get() path. But budget raise 80->85 showed no measurable improvement in prior attempt.",
-      "compiler_file": "cmd/compile/internal/inline/inl.go",
-      "expected_impact": "0-1% (prior attempt at budget 85 showed no gain)",
-      "risk": "low",
-      "status": "likely_ineffective"
-    },
-    {
-      "priority": 4,
-      "name": "prove-strict-subtraction",
-      "desc": "Uncomment 'if yLim.min > 0 { ft.update(v, x, lt) }' in detectSubRelations. Adds fact v < x when subtracting strictly positive value. Enables more BCE in certain patterns but didn't help walk() due to alias issue.",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go:2172-2175",
-      "expected_impact": "0-1% (helps other patterns, not the main hot path)",
-      "risk": "low - conservative addition of facts",
-      "status": "untried"
-    },
-    {
-      "priority": 5,
       "name": "escape-keyindex-put",
-      "desc": "keyIndex.put: append patterns escape to heap. GC at ~19% of WAL CPU.",
+      "desc": "keyIndex.put: append patterns escape to heap. Reducing allocations in Put path.",
       "compiler_file": "cmd/compile/internal/escape/escape.go",
       "expected_impact": "1-2% on Put benchmarks",
       "risk": "medium-high",
       "status": "untried"
+    },
+    {
+      "priority": 2,
+      "name": "prove-strict-subtraction",
+      "desc": "Uncomment strict subtraction fact in detectSubRelations for more BCE.",
+      "compiler_file": "cmd/compile/internal/ssa/prove.go:2172-2175",
+      "expected_impact": "0-1%",
+      "risk": "low",
+      "status": "untried"
+    },
+    {
+      "priority": 3,
+      "name": "bce-walk-alias-analysis",
+      "desc": "generation.walk g.revs[l-i-1] bounds check not eliminable without alias analysis.",
+      "compiler_file": "cmd/compile/internal/ssa/prove.go + escape analysis",
+      "expected_impact": "1-2% if achievable",
+      "risk": "high - fundamental limitation",
+      "status": "blocked_by_design"
     }
   ],
   "attempt_log": [
     {
       "date": "2026-04-30",
       "name": "raise-inline-budget-85",
-      "desc": "Raised inlineMaxBudget from 80 to 85",
-      "result": "no_significant_improvement",
-      "detail": "geomean -0.09%. Not meaningful.",
-      "lesson": "Budget increase too small. findGeneration (cost 81) inlined but no measurable impact."
+      "result": "no_improvement",
+      "detail": "findGeneration inlined but no measurable impact."
     },
     {
       "date": "2026-04-30",
       "name": "bce-walk-reverse-iteration",
-      "desc": "Attempted to prove g.revs[l-i-1] bounds safe by uncommenting strict subtraction fact in detectSubRelations",
       "result": "cannot_fix",
-      "detail": "Root cause: g.revs is reloaded each iteration because closure f could modify it. The prove pass correctly cannot eliminate the check without alias analysis proving f doesn't modify g.revs. SliceLen from range init != SliceLen for bounds check.",
-      "lesson": "BCE for reverse iteration through closure-calling loops requires alias analysis beyond current prove pass capabilities."
+      "detail": "Alias analysis limitation - closure could modify slice."
+    },
+    {
+      "date": "2026-04-30",
+      "name": "raise-budget-120-non-runtime",
+      "result": "no_improvement",
+      "detail": "items[go.shape.*uint8].find became inlineable (cost 119 < budget 120) but concrete type instantiations were already inlined. Shape-based generic not on actual hot path. geomean +0.14% (not significant, p>0.05)."
     }
   ],
   "successful_optimizations": [],
   "benchmark_baselines": {
     "date": "2026-04-30",
-    "compiler": "go1.26.0 (side compiler, stock)",
+    "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "148.6 ns/op",
-      "BenchmarkIndexCompact100": "10.69 us/op",
-      "BenchmarkIndexCompact10000": "1.031 ms/op",
-      "BenchmarkIndexCompact100000": "3.767 ms/op",
-      "BenchmarkIndexCompact1000000": "145.2 ms/op",
-      "BenchmarkIndexPut": "2.085 us/op",
-      "BenchmarkIndexGet": "1.751 us/op"
+      "BenchmarkIndexCompact1": "128.3 ns/op",
+      "BenchmarkIndexCompact100": "10.86 us/op",
+      "BenchmarkIndexCompact10000": "838.5 us/op",
+      "BenchmarkIndexCompact100000": "3.630 ms/op",
+      "BenchmarkIndexCompact1000000": "155.6 ms/op",
+      "BenchmarkIndexPut": "1.780 us/op",
+      "BenchmarkIndexGet": "1.532 us/op"
     }
   },
-  "last_run": "2026-04-30T17:06:00Z",
-  "last_tasks": [1, 4, 8, 9],
-  "task_substitutions": "Tasks 1,2,8 selected. Task 1 rebuilt side compiler (ephemeral /tmp). Task 2 substituted with Task 4 (profiling data still fresh from prior run). Task 4: investigated BCE for walk() reverse iteration - found alias analysis limitation blocking the optimization. Updated backlog priorities."
+  "last_run": "2026-04-30T17:32:00Z",
+  "last_tasks": [1, 2, 4, 8, 9],
+  "task_substitutions": "Tasks 1,2,8 selected. Task 1: rebuilt side compiler (ephemeral). Task 2: profiled mvcc benchmarks. Also attempted Task 4: raised non-runtime inline budget to 120 - items.find became inlineable but no benchmark impact (concrete types already inlined)."
 }
