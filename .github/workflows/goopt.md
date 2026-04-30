@@ -12,7 +12,7 @@ description: |
   Always measurement-driven, iterative, and mindful of correctness.
 
 on:
-  schedule: daily
+  schedule: every 1h
   workflow_dispatch:
   slash_command:
     name: goopt
