@@ -6,25 +6,29 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T22:01:00Z",
+    "last_validated": "2026-04-30T23:30:00Z",
     "tests_passed": ["server/storage/mvcc"],
     "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override."
   },
   "hot_paths": [
-    {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
-    {"func": "(*generation).walk", "flat_pct": 9.50, "cum_pct": 20.12, "pkg": "mvcc"},
-    {"func": "(*keyIndex).Less", "flat_pct": 7.72, "cum_pct": 20.71, "pkg": "mvcc"}
+    {"func": "cmpbody (bytealg.Compare)", "flat_pct": 31.93, "cum_pct": 31.93, "pkg": "runtime/internal"},
+    {"func": "(*keyIndex).Less", "flat_pct": 16.39, "cum_pct": 48.74, "pkg": "mvcc"},
+    {"func": "sort.Search", "flat_pct": 4.20, "cum_pct": 56.30, "pkg": "sort"},
+    {"func": "btree.items.find", "flat_pct": 3.36, "cum_pct": 61.76, "pkg": "k8s.io/utils"},
+    {"func": "(*keyIndex).compact", "flat_pct": 3.14, "cum_pct": 65.86, "pkg": "mvcc"}
   ],
   "profiling": {
-    "date": "2026-04-30T17:40:00Z",
-    "benchmarks_profiled": ["mvcc BenchmarkIndex*"],
-    "mvcc_total_samples": "79.06s"
+    "date": "2026-04-30T23:28:00Z",
+    "benchmarks_profiled": ["mvcc BenchmarkIndexCompact1", "BenchmarkIndexCompact1000000"],
+    "key_finding": "Small compact dominated by allocation (43% newobject, 18% makemap_small). Large compact dominated by btree search/comparison (49% cmpbody+Less). Walk BCE is minor."
   },
   "optimization_backlog": [
-    {"priority": 1, "name": "walk-len-invariant-tracking", "status": "untried"},
-    {"priority": 2, "name": "findGeneration-cost-reduction", "status": "untried"},
-    {"priority": 3, "name": "enable-newinliner", "status": "untried"},
-    {"priority": 4, "name": "bce-walk-alias-analysis", "status": "blocked_by_design"}
+    {"priority": 1, "name": "walk-len-invariant-tracking", "status": "low_impact", "note": "BCE at line 362 remains but walk is inlined and not the bottleneck"},
+    {"priority": 2, "name": "findGeneration-cost-reduction", "status": "regressed", "note": "Inlining findGeneration (cost 81->80 via free OBREAK/OCONTINUE) caused +2.52% regression due to code bloat"},
+    {"priority": 3, "name": "enable-newinliner", "status": "no_improvement", "note": "GOEXPERIMENT=newinliner showed -0.81% geomean, not statistically significant"},
+    {"priority": 4, "name": "bce-walk-alias-analysis", "status": "blocked_by_design"},
+    {"priority": 5, "name": "compare-sign-test", "status": "untried", "note": "Transform Eq64(Compare,-1) to Less64(Compare,0) for sign bit test. Likely negligible."},
+    {"priority": 6, "name": "btree-find-specialize", "status": "untried", "note": "Specialize btree binary search to avoid indirect call overhead"}
   ],
   "attempt_log": [
     {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement"},
@@ -32,7 +36,10 @@
     {"date": "2026-04-30", "name": "raise-budget-120-non-runtime", "result": "no_improvement"},
     {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean"},
     {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement"},
-    {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"}
+    {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"},
+    {"date": "2026-04-30", "name": "findGeneration-inline-via-free-break-continue", "result": "regression", "detail": "+2.52% geomean, code bloat from inlining"},
+    {"date": "2026-04-30", "name": "enable-newinliner-experiment", "result": "no_improvement", "detail": "-0.81% not significant"},
+    {"date": "2026-04-30", "name": "signed-sub-flowfacts-duplicate", "result": "crash", "detail": "Adding signed facts in flowLimit caused bootstrap panic (slice bounds OOB in runtime)"}
   ],
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
@@ -42,16 +49,16 @@
     "date": "2026-04-30",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "130.7 ns/op",
-      "BenchmarkIndexCompact100": "10.82 us/op",
-      "BenchmarkIndexCompact10000": "1.092 ms/op",
-      "BenchmarkIndexCompact100000": "4.346 ms/op",
-      "BenchmarkIndexCompact1000000": "175.8 ms/op",
-      "BenchmarkIndexPut": "2.104 us/op",
-      "BenchmarkIndexGet": "1.776 us/op"
+      "BenchmarkIndexCompact1": "132.4 ns/op",
+      "BenchmarkIndexCompact100": "10.80 us/op",
+      "BenchmarkIndexCompact10000": "1.075 ms/op",
+      "BenchmarkIndexCompact100000": "4.172 ms/op",
+      "BenchmarkIndexCompact1000000": "178.4 ms/op",
+      "BenchmarkIndexPut": "2.092 us/op",
+      "BenchmarkIndexGet": "1.818 us/op"
     }
   },
-  "last_run": "2026-04-30T22:01:00Z",
+  "last_run": "2026-04-30T23:30:00Z",
   "last_tasks": [4, 5, 8, 9],
-  "task_substitutions": "Tasks 3,5,8 selected. Task 5 substituted to Task 4 (no pending modification). Implemented signed-sub-flowfacts, benchmarked (Task 5), validated."
+  "task_substitutions": "Tasks 4,5,8 selected. Side compiler rebuilt (ephemeral /tmp). Attempted findGeneration inlining (regression) and newinliner experiment (no improvement). No new validated optimization this run."
 }
