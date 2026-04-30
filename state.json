@@ -6,7 +6,7 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T18:37:00Z",
+    "last_validated": "2026-04-30T20:45:00Z",
     "tests_passed": ["server/storage/mvcc"],
     "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override"
   },
@@ -31,29 +31,38 @@
   "optimization_backlog": [
     {
       "priority": 1,
-      "name": "escape-keyindex-put",
-      "desc": "keyIndex.put: append patterns escape to heap. Reducing allocations in Put path.",
-      "compiler_file": "cmd/compile/internal/escape/escape.go",
-      "expected_impact": "1-2% on Put benchmarks",
-      "risk": "medium-high",
+      "name": "walk-len-invariant-tracking",
+      "desc": "Teach prove pass that l := len(s) before range s loop implies l == len(s) if no writes observed. Would eliminate BCE at walk line 362.",
+      "compiler_file": "cmd/compile/internal/ssa/prove.go",
+      "expected_impact": "2-5% on compact benchmarks",
+      "risk": "high - complex implementation",
       "status": "untried"
     },
     {
       "priority": 2,
-      "name": "prove-strict-subtraction",
-      "desc": "Enable strict subtraction facts in detectSubRelations for more BCE.",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go:2172-2175",
-      "expected_impact": "-9.85% geomean (validated)",
-      "risk": "low",
-      "status": "validated"
+      "name": "signed-sub-branch-facts",
+      "desc": "Implement signed subtraction facts in addBranchRestrictions (FIXME at prove.go:2511).",
+      "compiler_file": "cmd/compile/internal/ssa/prove.go:2511",
+      "expected_impact": "unknown",
+      "risk": "medium",
+      "status": "untried"
     },
     {
       "priority": 3,
+      "name": "enable-newinliner",
+      "desc": "Activate NewInliner experiment to double budget to 160. Would inline items.find (119), BTree.Get (81).",
+      "compiler_file": "src/internal/goexperiment/exp_newinliner_off.go",
+      "expected_impact": "variable",
+      "risk": "high - large behavioral change",
+      "status": "untried"
+    },
+    {
+      "priority": 4,
       "name": "bce-walk-alias-analysis",
       "desc": "generation.walk g.revs[l-i-1] bounds check not eliminable without alias analysis.",
       "compiler_file": "cmd/compile/internal/ssa/prove.go + escape analysis",
       "expected_impact": "1-2% if achievable",
-      "risk": "high - fundamental limitation",
+      "risk": "very high - fundamental limitation",
       "status": "blocked_by_design"
     }
   ],
@@ -61,14 +70,15 @@
     {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement", "detail": "findGeneration inlined but no measurable impact."},
     {"date": "2026-04-30", "name": "bce-walk-reverse-iteration", "result": "cannot_fix", "detail": "Alias analysis limitation - closure could modify slice."},
     {"date": "2026-04-30", "name": "raise-budget-120-non-runtime", "result": "no_improvement", "detail": "Shape generic not on actual hot path. geomean +0.14% (not significant)."},
-    {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean. Eliminated BCE at key_index.go:161. PR created."}
+    {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean. Eliminated BCE at key_index.go:161. PR created."},
+    {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement", "detail": "Made continue/break zero-cost. findGeneration inlined into get (81->80). IndexGet -1.6% but p=0.442."}
   ],
   "successful_optimizations": [
     {
       "name": "prove-strict-subtraction",
       "date": "2026-04-30",
       "improvement": "-9.85% geomean on BenchmarkIndex*",
-      "bce_eliminated": "key_index.go:161",
+      "bce_eliminated": "key_index.go walk inlined in get",
       "patch": "goopt/compiler-patches/prove-strict-subtraction.patch",
       "pr_branch": "goopt/prove-strict-subtraction",
       "upstream_potential": "high"
@@ -78,16 +88,16 @@
     "date": "2026-04-30",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "129.6 ns/op",
-      "BenchmarkIndexCompact100": "10.61 us/op",
-      "BenchmarkIndexCompact10000": "1.073 ms/op",
-      "BenchmarkIndexCompact100000": "6.495 ms/op",
-      "BenchmarkIndexCompact1000000": "238.6 ms/op",
-      "BenchmarkIndexPut": "2.470 us/op",
-      "BenchmarkIndexGet": "2.154 us/op"
+      "BenchmarkIndexCompact1": "129.8 ns/op",
+      "BenchmarkIndexCompact100": "10.94 us/op",
+      "BenchmarkIndexCompact10000": "1.098 ms/op",
+      "BenchmarkIndexCompact100000": "4.614 ms/op",
+      "BenchmarkIndexCompact1000000": "178.0 ms/op",
+      "BenchmarkIndexPut": "2.131 us/op",
+      "BenchmarkIndexGet": "1.825 us/op"
     }
   },
-  "last_run": "2026-04-30T18:37:00Z",
-  "last_tasks": [4, 5, 8, 9],
-  "task_substitutions": "Tasks 5,3,8 selected. Task 5 substituted to Task 4 (no untested modification). Implemented prove-strict-subtraction, then benchmarked (Task 5). Validated -9.85% geomean improvement."
+  "last_run": "2026-04-30T20:45:00Z",
+  "last_tasks": [4, 3, 8, 9],
+  "task_substitutions": "Tasks 5,3,8 selected. Task 5 substituted to Task 4 (no untested modification). Tried inline-free-continue-break, not significant."
 }
