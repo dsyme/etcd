@@ -6,33 +6,33 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T12:41:00Z",
+    "last_validated": "2026-04-30T15:00:00Z",
     "tests_passed": ["server/storage/mvcc"],
     "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override"
   },
   "hot_paths": [
-    {"func": "(*keyIndex).compact", "flat_pct": 13.42, "cum_pct": 45.47, "pkg": "mvcc"},
-    {"func": "(*generation).walk", "flat_pct": 13.12, "cum_pct": 23.25, "pkg": "mvcc"},
-    {"func": "cmpbody", "flat_pct": 12.29, "cum_pct": 12.29, "pkg": "runtime"},
-    {"func": "(*keyIndex).Less", "flat_pct": 7.94, "cum_pct": 20.46, "pkg": "mvcc"},
-    {"func": "(*keyIndex).isEmpty", "flat_pct": 7.69, "cum_pct": 7.87, "pkg": "mvcc"},
-    {"func": "items.find", "flat_pct": 1.04, "cum_pct": 25.67, "pkg": "btree"},
-    {"func": "(*node).get", "flat_pct": 1.42, "cum_pct": 23.10, "pkg": "btree"},
-    {"func": "sort.Search", "flat_pct": 1.11, "cum_pct": 23.79, "pkg": "sort"},
-    {"func": "(*BTree).Get", "flat_pct": 0.01, "cum_pct": 23.12, "pkg": "btree"},
-    {"func": "(*keyIndex).doCompact", "flat_pct": 0.36, "cum_pct": 23.61, "pkg": "mvcc"}
+    {"func": "(*keyIndex).compact", "flat_pct": 9.78, "cum_pct": 33.43, "pkg": "mvcc"},
+    {"func": "items.find", "flat_pct": 1.22, "cum_pct": 29.90, "pkg": "btree"},
+    {"func": "(*node).iterate", "flat_pct": 1.15, "cum_pct": 39.34, "pkg": "btree"},
+    {"func": "sort.Search", "flat_pct": 1.13, "cum_pct": 27.65, "pkg": "sort"},
+    {"func": "(*node).get", "flat_pct": 1.98, "cum_pct": 27.25, "pkg": "btree"},
+    {"func": "items.find.func1", "flat_pct": 2.68, "cum_pct": 26.52, "pkg": "btree"},
+    {"func": "(*keyIndex).Less", "flat_pct": 8.78, "cum_pct": 24.43, "pkg": "mvcc"},
+    {"func": "(*keyIndex).doCompact", "flat_pct": 0.49, "cum_pct": 18.33, "pkg": "mvcc"},
+    {"func": "(*generation).walk", "flat_pct": 7.82, "cum_pct": 17.85, "pkg": "mvcc"},
+    {"func": "cmpbody", "flat_pct": 15.35, "cum_pct": 15.35, "pkg": "runtime"}
   ],
   "profiling": {
-    "date": "2026-04-30T11:00:00Z",
-    "benchmark": "BenchmarkIndex*",
-    "duration": "68.6s",
-    "total_samples": "77.22s"
+    "date": "2026-04-30T15:00:00Z",
+    "benchmarks_profiled": ["mvcc BenchmarkIndex*", "wal BenchmarkWrite*"],
+    "mvcc_total_samples": "96.38s",
+    "wal_finding": "WAL dominated by syscalls (36.8%) and GC (19.3%) - limited codegen opportunity"
   },
   "optimization_backlog": [
     {
       "priority": 1,
       "name": "bce-key-index-hot",
-      "desc": "21 bounds checks in key_index.go. generation.walk reverse-iteration pattern g.revs[l-i-1] not proved safe.",
+      "desc": "20 bounds checks in key_index.go. generation.walk reverse-iteration pattern g.revs[l-i-1] not proved safe.",
       "compiler_file": "cmd/compile/internal/ssa/prove.go",
       "expected_impact": "1-3% on compact benchmarks",
       "risk": "medium",
@@ -41,7 +41,7 @@
     {
       "priority": 2,
       "name": "escape-keyindex-put",
-      "desc": "keyIndex.put: append patterns escape to heap. GC at ~9% of CPU.",
+      "desc": "keyIndex.put: append patterns escape to heap. GC at ~19% of WAL CPU.",
       "compiler_file": "cmd/compile/internal/escape/escape.go",
       "expected_impact": "1-2% on Put benchmarks",
       "risk": "medium-high",
@@ -49,8 +49,17 @@
     },
     {
       "priority": 3,
+      "name": "inline-doCompact",
+      "desc": "(*keyIndex).doCompact cost 130 (budget 80), called from hot compact path (33% cum CPU). Partial inlining or cost reduction could help.",
+      "compiler_file": "cmd/compile/internal/inline/inl.go",
+      "expected_impact": "2-4% on compact benchmarks",
+      "risk": "medium",
+      "status": "untried"
+    },
+    {
+      "priority": 4,
       "name": "inline-btree-find-specialize",
-      "desc": "items.find (cost 119) and node.get (cost 167) too complex for budget. Consider specialization or partial inlining of sort.Search pattern.",
+      "desc": "items.find (cost 119) and node.get (cost 167) too complex for budget.",
       "compiler_file": "cmd/compile/internal/inline/inl.go",
       "expected_impact": "2-5% on Get/Compact benchmarks",
       "risk": "medium",
@@ -63,25 +72,25 @@
       "name": "raise-inline-budget-85",
       "desc": "Raised inlineMaxBudget from 80 to 85",
       "result": "no_significant_improvement",
-      "detail": "BTree.Get (cost 81) now inlinable but hot inner funcs (items.find cost 119, node.get cost 167) still too big. Only IndexCompact100 showed -1.28% (p=0.038), geomean -0.09%. Not meaningful.",
-      "lesson": "Budget increase too small to reach truly hot inner functions. Need targeted approach (BCE, escape analysis) or partial inlining."
+      "detail": "geomean -0.09%. Not meaningful.",
+      "lesson": "Budget increase too small to reach truly hot inner functions."
     }
   ],
   "successful_optimizations": [],
   "benchmark_baselines": {
     "date": "2026-04-30",
-    "compiler": "go1.26.2 (system, stock)",
+    "compiler": "go1.26.0 (side compiler, stock)",
     "results": {
-      "BenchmarkIndexCompact1": "127.3 ns/op",
+      "BenchmarkIndexCompact1": "148.6 ns/op",
       "BenchmarkIndexCompact100": "10.69 µs/op",
-      "BenchmarkIndexCompact10000": "1.069 ms/op",
-      "BenchmarkIndexCompact100000": "3.788 ms/op",
-      "BenchmarkIndexCompact1000000": "147.9 ms/op",
-      "BenchmarkIndexPut": "1.912 µs/op",
-      "BenchmarkIndexGet": "1.591 µs/op"
+      "BenchmarkIndexCompact10000": "1.031 ms/op",
+      "BenchmarkIndexCompact100000": "3.767 ms/op",
+      "BenchmarkIndexCompact1000000": "145.2 ms/op",
+      "BenchmarkIndexPut": "2.085 µs/op",
+      "BenchmarkIndexGet": "1.751 µs/op"
     }
   },
-  "last_run": "2026-04-30T12:41:00Z",
-  "last_tasks": [1, 4, 5, 8, 9],
-  "task_substitutions": "Tasks 1,8 selected. Task 1 done (side compiler rebuilt, GOTOOLCHAIN=local needed). Advanced to Task 4 (inline budget 80->85) and Task 5 (benchmark). Result: no significant improvement."
+  "last_run": "2026-04-30T15:00:00Z",
+  "last_tasks": [1, 2, 8, 9],
+  "task_substitutions": "Tasks 1,2,8 selected. Task 1 rebuilt side compiler. Task 2 re-profiled mvcc and wal. WAL is syscall-bound; mvcc remains best target. Updated backlog with doCompact inlining opportunity."
 }
