@@ -6,14 +6,14 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T17:32:00Z",
+    "last_validated": "2026-04-30T19:00:00Z",
     "tests_passed": ["server/storage/mvcc"],
     "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override"
   },
   "hot_paths": [
     {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
-    {"func": "(*generation).walk", "flat_pct": 9.50, "cum_pct": 20.12, "pkg": "mvcc"},
-    {"func": "(*keyIndex).Less", "flat_pct": 7.72, "cum_pct": 20.71, "pkg": "mvcc", "note": "bytes.Compare intrinsic"},
+    {"func": "(*generation).walk", "flat_pct": 9.50, "cum_pct": 20.12, "pkg": "mvcc", "note": "inlined (cost 55)"},
+    {"func": "(*keyIndex).Less", "flat_pct": 7.72, "cum_pct": 20.71, "pkg": "mvcc", "note": "bytes.Compare intrinsic, CMPQ $-1 pattern"},
     {"func": "items.find.func1", "flat_pct": 2.01, "cum_pct": 22.36, "pkg": "btree", "note": "already inlined"},
     {"func": "(*node).get", "flat_pct": 1.34, "cum_pct": 22.86, "pkg": "btree"},
     {"func": "sort.Search", "flat_pct": 1.00, "cum_pct": 23.36, "pkg": "sort", "note": "already inlined"},
@@ -31,6 +31,15 @@
   "optimization_backlog": [
     {
       "priority": 1,
+      "name": "cmp-sign-test",
+      "desc": "bytes.Compare(a,b)==-1 uses CMPQ $-1;SETE. Could use TESTL;SETS (< 0 pattern). Saves 0 instructions but TEST is cheaper on some µarch.",
+      "compiler_file": "cmd/compile/internal/ssa/rewriteAMD64.go or generic",
+      "expected_impact": "<1% - single instruction difference in Less",
+      "risk": "low but impact likely negligible",
+      "status": "untried"
+    },
+    {
+      "priority": 2,
       "name": "escape-keyindex-put",
       "desc": "keyIndex.put: append patterns escape to heap. Reducing allocations in Put path.",
       "compiler_file": "cmd/compile/internal/escape/escape.go",
@@ -39,22 +48,13 @@
       "status": "untried"
     },
     {
-      "priority": 2,
-      "name": "prove-strict-subtraction",
-      "desc": "Uncomment strict subtraction fact in detectSubRelations for more BCE.",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go:2172-2175",
-      "expected_impact": "0-1%",
+      "priority": 3,
+      "name": "findGeneration-inline",
+      "desc": "findGeneration cost=81, budget=80 (1 over). Used in get path. Even if inlined, get is 288 cost so won't cascade. Limited impact.",
+      "compiler_file": "cmd/compile/internal/inline/inl.go",
+      "expected_impact": "<1% - get path not dominant in compact benchmarks",
       "risk": "low",
       "status": "untried"
-    },
-    {
-      "priority": 3,
-      "name": "bce-walk-alias-analysis",
-      "desc": "generation.walk g.revs[l-i-1] bounds check not eliminable without alias analysis.",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go + escape analysis",
-      "expected_impact": "1-2% if achievable",
-      "risk": "high - fundamental limitation",
-      "status": "blocked_by_design"
     }
   ],
   "attempt_log": [
@@ -75,6 +75,12 @@
       "name": "raise-budget-120-non-runtime",
       "result": "no_improvement",
       "detail": "items[go.shape.*uint8].find became inlineable (cost 119 < budget 120) but concrete type instantiations were already inlined. Shape-based generic not on actual hot path. geomean +0.14% (not significant, p>0.05)."
+    },
+    {
+      "date": "2026-04-30",
+      "name": "prove-strict-subtraction",
+      "result": "regression",
+      "detail": "Enabled strict v<x (when y>0) and v>=1 (when y<x) facts in detectSubRelations. Result: geomean +3.60% SLOWER. IndexGet +6.13% (p=0.005), IndexCompact100000 +7.79% (p=0.021). Likely cause: prover spending more time on additional facts without eliminating any bounds checks in mvcc code. BCE count unchanged (140 remaining). Reverted."
     }
   ],
   "successful_optimizations": [],
@@ -82,16 +88,16 @@
     "date": "2026-04-30",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "128.3 ns/op",
-      "BenchmarkIndexCompact100": "10.86 us/op",
-      "BenchmarkIndexCompact10000": "838.5 us/op",
-      "BenchmarkIndexCompact100000": "3.630 ms/op",
-      "BenchmarkIndexCompact1000000": "155.6 ms/op",
-      "BenchmarkIndexPut": "1.780 us/op",
-      "BenchmarkIndexGet": "1.532 us/op"
+      "BenchmarkIndexCompact1": "126.0 ns/op",
+      "BenchmarkIndexCompact100": "10.31 us/op",
+      "BenchmarkIndexCompact10000": "1.037 ms/op",
+      "BenchmarkIndexCompact100000": "4.326 ms/op",
+      "BenchmarkIndexCompact1000000": "207.5 ms/op",
+      "BenchmarkIndexPut": "2.177 us/op",
+      "BenchmarkIndexGet": "1.844 us/op"
     }
   },
-  "last_run": "2026-04-30T17:32:00Z",
-  "last_tasks": [1, 2, 4, 8, 9],
-  "task_substitutions": "Tasks 1,2,8 selected. Task 1: rebuilt side compiler (ephemeral). Task 2: profiled mvcc benchmarks. Also attempted Task 4: raised non-runtime inline budget to 120 - items.find became inlineable but no benchmark impact (concrete types already inlined)."
+  "last_run": "2026-04-30T19:00:00Z",
+  "last_tasks": [3, 4, 5, 8, 9],
+  "task_substitutions": "Tasks 3,4 selected. Task 3: deepened codegen analysis - found cmp-sign-test opportunity, confirmed findGeneration is 1 over budget. Task 4/5: tried prove.go strict subtraction facts - caused regression (+3.6% geomean), reverted."
 }
