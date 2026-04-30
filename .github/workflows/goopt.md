@@ -254,7 +254,28 @@ Focus optimization efforts on these hot-path packages (in priority order):
 
 ## Workflow
 
-At the start of your run, read `/tmp/gh-aw/task_selection.json`. Execute the selected tasks, then always do Task 8.
+At the start of your run, read `/tmp/gh-aw/task_selection.json`. It contains `selected_tasks` (two tasks chosen by weighted random draw) and state flags describing what infrastructure exists.
+
+**Execute the selected tasks, but apply task substitution if a selected task cannot be performed:**
+
+Tasks have **prerequisites**. If a selected task's prerequisites are not met, substitute the most logically prior incomplete task instead — the one that would unblock the selected task. The dependency chain is:
+
+- **Task 1** (Setup Side Compiler): no prerequisites — can always run
+- **Task 2** (Profile Hot Paths): requires side compiler (Task 1 completed)
+- **Task 3** (Identify Codegen Opportunities): requires profiling results (Task 2 completed at least once)
+- **Task 4** (Implement Compiler Optimization): requires optimization backlog (Task 3 completed at least once)
+- **Task 5** (Benchmark and Validate): requires a compiler modification to test (Task 4 completed in this or a prior run)
+- **Task 6** (Document and Propose Upstream): requires a validated optimization with benchstat evidence (Task 5 completed with positive results)
+- **Task 7** (Maintain GoOpt PRs): requires open GoOpt PRs to exist — if none, skip entirely
+
+**Substitution rules:**
+1. Check memory and the state flags in `task_selection.json` to determine what has been completed in prior runs.
+2. If a selected task cannot run (e.g., Task 4 selected but no optimization backlog exists), walk back the dependency chain to the first incomplete prerequisite task and run that instead.
+3. If both selected tasks resolve to the same substitute, run that task once and then advance to the next task in the chain if time permits.
+4. Always do Task 8 (Update Monthly Status) in addition to the selected/substituted tasks.
+5. Record the substitution in memory and in the Task 8 status update (e.g., "Task 4 selected → substituted Task 1 (no side compiler yet)").
+
+**Example:** If the weighted draw selects Tasks 4 and 5 but no side compiler has been built yet, substitute both with Task 1 (Setup Side Compiler). If Task 1 succeeds within the run, continue with Task 2 (Profile Hot Paths) to make further progress.
 
 ---
 
