@@ -1,0 +1,22 @@
+diff --git a/src/cmd/compile/internal/ssa/prove.go b/src/cmd/compile/internal/ssa/prove.go
+index de16dfb..c52079e 100644
+--- a/src/cmd/compile/internal/ssa/prove.go
++++ b/src/cmd/compile/internal/ssa/prove.go
+@@ -2508,7 +2508,16 @@ func addLocalFacts(ft *factsTable, b *Block) {
+ 				}
+ 				ft.update(b, v, v.Args[0], unsigned, r)
+ 			}
+-			// FIXME: we could also do signed facts but the overflow checks are much trickier and I don't need it yet.
++			// Signed facts: if x >= 0 and y >= 0, then x - y <= x (no overflow
++			// possible since both non-negative means x - y <= x <= MaxInt).
++			if x.min >= 0 && y.min >= 0 {
++				// v = x - y <= x always when both non-negative
++				ft.update(b, v, v.Args[0], signed, lt|eq)
++				// If x.min >= y.max, then v = x - y >= 0
++				if x.min >= y.max {
++					ft.update(b, v, v.Args[1], signed, gt|eq)
++				}
++			}
+ 		case OpAnd64, OpAnd32, OpAnd16, OpAnd8:
+ 			ft.update(b, v, v.Args[0], unsigned, lt|eq)
+ 			ft.update(b, v, v.Args[1], unsigned, lt|eq)
