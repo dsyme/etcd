@@ -6,22 +6,20 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T10:55:00Z",
+    "last_validated": "2026-04-30T12:06:00Z",
     "tests_passed": ["server/storage/mvcc"]
   },
   "hot_paths": [
     {"func": "(*keyIndex).compact", "flat_pct": 13.42, "cum_pct": 45.47, "pkg": "mvcc"},
-    {"func": "(*treeIndex).Compact.func1", "flat_pct": 0.82, "cum_pct": 50.14, "pkg": "mvcc"},
-    {"func": "items.find", "flat_pct": 1.04, "cum_pct": 25.67, "pkg": "btree"},
-    {"func": "sort.Search", "flat_pct": 1.11, "cum_pct": 23.79, "pkg": "sort"},
-    {"func": "(*keyIndex).doCompact", "flat_pct": 0.36, "cum_pct": 23.61, "pkg": "mvcc"},
     {"func": "(*generation).walk", "flat_pct": 13.12, "cum_pct": 23.25, "pkg": "mvcc"},
-    {"func": "(*BTree).Get", "flat_pct": 0.01, "cum_pct": 23.12, "pkg": "btree"},
-    {"func": "(*node).get", "flat_pct": 1.42, "cum_pct": 23.10, "pkg": "btree"},
-    {"func": "(*keyIndex).Less", "flat_pct": 7.94, "cum_pct": 20.46, "pkg": "mvcc"},
     {"func": "cmpbody", "flat_pct": 12.29, "cum_pct": 12.29, "pkg": "runtime"},
+    {"func": "(*keyIndex).Less", "flat_pct": 7.94, "cum_pct": 20.46, "pkg": "mvcc"},
     {"func": "(*keyIndex).isEmpty", "flat_pct": 7.69, "cum_pct": 7.87, "pkg": "mvcc"},
-    {"func": "runtime.gcDrain", "flat_pct": 0.12, "cum_pct": 8.65, "pkg": "runtime"}
+    {"func": "items.find", "flat_pct": 1.04, "cum_pct": 25.67, "pkg": "btree"},
+    {"func": "(*node).get", "flat_pct": 1.42, "cum_pct": 23.10, "pkg": "btree"},
+    {"func": "sort.Search", "flat_pct": 1.11, "cum_pct": 23.79, "pkg": "sort"},
+    {"func": "(*BTree).Get", "flat_pct": 0.01, "cum_pct": 23.12, "pkg": "btree"},
+    {"func": "(*keyIndex).doCompact", "flat_pct": 0.36, "cum_pct": 23.61, "pkg": "mvcc"}
   ],
   "profiling": {
     "date": "2026-04-30T11:00:00Z",
@@ -42,7 +40,7 @@
     {
       "priority": 2,
       "name": "bce-key-index-hot",
-      "desc": "21 bounds checks in key_index.go. generation.walk reverse-iteration pattern g.revs[l-i-1] not proved safe. Also line 362.",
+      "desc": "21 bounds checks in key_index.go. generation.walk reverse-iteration pattern g.revs[l-i-1] not proved safe.",
       "compiler_file": "cmd/compile/internal/ssa/prove.go",
       "expected_impact": "1-3% on compact benchmarks",
       "risk": "medium",
@@ -73,21 +71,7 @@
       "BenchmarkIndexGet": "1906 ns/op"
     }
   },
-  "codegen_analysis": {
-    "date": "2026-04-30",
-    "key_findings": [
-      "BTree.Get cost=81 vs budget=80: NOT inlined (23% cum CPU)",
-      "keyIndex.findGeneration cost=81 vs budget=80: NOT inlined",
-      "items.find cost=119: too large (26% cum CPU)",
-      "node.get cost=167: too large (23% cum CPU)",
-      "21 bounds checks in key_index.go",
-      "generation.walk g.revs[l-i-1] bounds check not eliminated (line 362)",
-      "keyIndex.isEmpty 7.87% cum - already inlined",
-      "GC/malloc at ~9% - escape analysis opportunities",
-      "mutableChild cost=80: borderline inlined"
-    ]
-  },
-  "last_run": "2026-04-30T11:00:00Z",
-  "last_tasks": [1, 2, 8, 9],
-  "task_substitutions": "Tasks 1,2 selected. Both executed successfully. Side compiler rebuilt, profiling completed."
+  "last_run": "2026-04-30T12:06:00Z",
+  "last_tasks": [1, 8, 9],
+  "task_substitutions": "Tasks 1,8 selected. Task 1 executed (side compiler rebuilt). Tasks 8,9 completed."
 }
