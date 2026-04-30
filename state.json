@@ -6,118 +6,52 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T21:47:00Z",
+    "last_validated": "2026-04-30T22:01:00Z",
     "tests_passed": ["server/storage/mvcc"],
-    "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override. Previous prove-strict-subtraction patch applied."
+    "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override."
   },
   "hot_paths": [
     {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
     {"func": "(*generation).walk", "flat_pct": 9.50, "cum_pct": 20.12, "pkg": "mvcc"},
-    {"func": "(*keyIndex).Less", "flat_pct": 7.72, "cum_pct": 20.71, "pkg": "mvcc", "note": "bytes.Compare intrinsic"},
-    {"func": "items.find.func1", "flat_pct": 2.01, "cum_pct": 22.36, "pkg": "btree", "note": "already inlined"},
-    {"func": "(*node).get", "flat_pct": 1.34, "cum_pct": 22.86, "pkg": "btree"},
-    {"func": "sort.Search", "flat_pct": 1.00, "cum_pct": 23.36, "pkg": "sort", "note": "already inlined"},
-    {"func": "items.find", "flat_pct": 1.13, "cum_pct": 25.30, "pkg": "btree"},
-    {"func": "(*node).iterate", "flat_pct": 1.37, "cum_pct": 44.11, "pkg": "btree"},
-    {"func": "(*keyIndex).doCompact", "flat_pct": 0.47, "cum_pct": 20.58, "pkg": "mvcc"},
-    {"func": "bytes.Compare", "flat_pct": 0.09, "cum_pct": 12.99, "pkg": "bytes", "note": "assembly intrinsic"}
+    {"func": "(*keyIndex).Less", "flat_pct": 7.72, "cum_pct": 20.71, "pkg": "mvcc"}
   ],
   "profiling": {
     "date": "2026-04-30T17:40:00Z",
     "benchmarks_profiled": ["mvcc BenchmarkIndex*"],
-    "mvcc_total_samples": "79.06s",
-    "note": "Compact benchmarks dominate (~59% cum in benchmarkIndexCompact). Hot path is btree iteration + keyIndex.compact."
+    "mvcc_total_samples": "79.06s"
   },
   "optimization_backlog": [
-    {
-      "priority": 1,
-      "name": "signed-sub-flowfacts",
-      "desc": "Implement signed subtraction facts at prove.go:2511 FIXME. For OpSub when both args non-negative and no overflow, derive v >= 0 and v <= x. Would help BCE for l-i-1 pattern in walk (line 362).",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go:2511",
-      "expected_impact": "2-5% on compact benchmarks (eliminates BCE in walk hot loop)",
-      "risk": "medium - need careful overflow check",
-      "status": "untried"
-    },
-    {
-      "priority": 2,
-      "name": "walk-len-invariant-tracking",
-      "desc": "Teach prove pass that l := len(s) before range s loop implies l == len(s) if no writes observed. Would eliminate BCE at walk line 362.",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go",
-      "expected_impact": "2-5% on compact benchmarks",
-      "risk": "high - complex implementation",
-      "status": "untried"
-    },
-    {
-      "priority": 3,
-      "name": "findGeneration-cost-reduction",
-      "desc": "findGeneration costs 81 (budget 80). Investigate reducing struct copy cost or finding compiler heuristic to lower cost by 2. Would inline into get() and doCompact().",
-      "compiler_file": "cmd/compile/internal/inline/inl.go",
-      "expected_impact": "1-3% on Get benchmarks if inlined",
-      "risk": "low - minor budget adjustment",
-      "status": "untried"
-    },
-    {
-      "priority": 4,
-      "name": "enable-newinliner",
-      "desc": "Activate NewInliner experiment to double budget to 160. Would inline items.find (119), BTree.Get (81).",
-      "compiler_file": "src/internal/goexperiment/exp_newinliner_off.go",
-      "expected_impact": "variable",
-      "risk": "high - large behavioral change",
-      "status": "untried"
-    },
-    {
-      "priority": 5,
-      "name": "bce-walk-alias-analysis",
-      "desc": "generation.walk g.revs[l-i-1] bounds check not eliminable without alias analysis.",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go + escape analysis",
-      "expected_impact": "1-2% if achievable",
-      "risk": "very high - fundamental limitation",
-      "status": "blocked_by_design"
-    }
+    {"priority": 1, "name": "walk-len-invariant-tracking", "status": "untried"},
+    {"priority": 2, "name": "findGeneration-cost-reduction", "status": "untried"},
+    {"priority": 3, "name": "enable-newinliner", "status": "untried"},
+    {"priority": 4, "name": "bce-walk-alias-analysis", "status": "blocked_by_design"}
   ],
-  "bce_analysis": {
-    "date": "2026-04-30T21:47:00Z",
-    "key_index_bce_count": 21,
-    "hot_bce": [
-      {"line": 362, "code": "g.revs[l-i-1]", "func": "walk", "note": "Hot loop reverse iteration. Main target."},
-      {"line": 161, "code": "g.revs[n]", "func": "get", "note": "After walk returns index"},
-      {"line": 269, "code": "g.revs[len(g.revs)-1]", "func": "doCompact loop", "note": "Tombstone check"},
-      {"line": 296, "code": "ki.generations[cg]", "func": "findGeneration", "note": "Loop var index"},
-      {"line": 306, "code": "g.revs[0]", "func": "findGeneration", "note": "First rev check"}
-    ]
-  },
   "attempt_log": [
-    {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement", "detail": "findGeneration inlined but no measurable impact."},
-    {"date": "2026-04-30", "name": "bce-walk-reverse-iteration", "result": "cannot_fix", "detail": "Alias analysis limitation - closure could modify slice."},
-    {"date": "2026-04-30", "name": "raise-budget-120-non-runtime", "result": "no_improvement", "detail": "Shape generic not on actual hot path. geomean +0.14% (not significant)."},
-    {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean. Eliminated BCE at key_index.go:161. PR created."},
-    {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement", "detail": "Made continue/break zero-cost. findGeneration inlined into get (81->80). IndexGet -1.6% but p=0.442."}
+    {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "bce-walk-reverse-iteration", "result": "cannot_fix"},
+    {"date": "2026-04-30", "name": "raise-budget-120-non-runtime", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean"},
+    {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"}
   ],
   "successful_optimizations": [
-    {
-      "name": "prove-strict-subtraction",
-      "date": "2026-04-30",
-      "improvement": "-9.85% geomean on BenchmarkIndex*",
-      "bce_eliminated": "key_index.go walk inlined in get",
-      "patch": "goopt/compiler-patches/prove-strict-subtraction.patch",
-      "pr_branch": "goopt/prove-strict-subtraction",
-      "upstream_potential": "high"
-    }
+    {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
+    {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"}
   ],
   "benchmark_baselines": {
     "date": "2026-04-30",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "129.8 ns/op",
-      "BenchmarkIndexCompact100": "10.94 us/op",
-      "BenchmarkIndexCompact10000": "1.098 ms/op",
-      "BenchmarkIndexCompact100000": "4.614 ms/op",
-      "BenchmarkIndexCompact1000000": "178.0 ms/op",
-      "BenchmarkIndexPut": "2.131 us/op",
-      "BenchmarkIndexGet": "1.825 us/op"
+      "BenchmarkIndexCompact1": "130.7 ns/op",
+      "BenchmarkIndexCompact100": "10.82 us/op",
+      "BenchmarkIndexCompact10000": "1.092 ms/op",
+      "BenchmarkIndexCompact100000": "4.346 ms/op",
+      "BenchmarkIndexCompact1000000": "175.8 ms/op",
+      "BenchmarkIndexPut": "2.104 us/op",
+      "BenchmarkIndexGet": "1.776 us/op"
     }
   },
-  "last_run": "2026-04-30T21:47:00Z",
-  "last_tasks": [1, 3, 8, 9],
-  "task_substitutions": "Tasks 3,2,8 selected. Both substituted to Task 1 first (side compiler not available). Then Task 3 (codegen analysis) completed."
+  "last_run": "2026-04-30T22:01:00Z",
+  "last_tasks": [4, 5, 8, 9],
+  "task_substitutions": "Tasks 3,5,8 selected. Task 5 substituted to Task 4 (no pending modification). Implemented signed-sub-flowfacts, benchmarked (Task 5), validated."
 }
