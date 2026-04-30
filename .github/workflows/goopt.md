@@ -56,7 +56,7 @@ safe-outputs:
     target: "*"
     hide-older-comments: true
   create-pull-request:
-    draft: true
+    draft: false
     title-prefix: "[GoOpt] "
     labels: [automation, performance, compiler]
     max: 4
