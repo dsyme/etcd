@@ -2,18 +2,73 @@
   "go_version": "1.26",
   "system_go": "1.26.2",
   "side_compiler": {
-    "status": "not_setup",
+    "status": "built_and_validated",
     "path": "/tmp/goopt/go",
-    "version": null,
-    "last_validated": null
+    "version": "go1.26.2",
+    "source": "github.com/golang/go tag go1.26.0",
+    "last_validated": "2026-04-30T09:22:00Z",
+    "tests_passed": ["server/storage/mvcc"]
   },
-  "hot_paths": [],
-  "optimization_backlog": [],
+  "hot_paths": [
+    {"func": "(*keyIndex).compact", "flat_pct": 13.0, "cum_pct": 43.2, "pkg": "mvcc"},
+    {"func": "cmpbody (bytes.Compare)", "flat_pct": 12.5, "cum_pct": 12.5, "pkg": "runtime"},
+    {"func": "(*generation).walk", "flat_pct": 12.5, "cum_pct": 22.2, "pkg": "mvcc"},
+    {"func": "(*keyIndex).Less", "flat_pct": 7.9, "cum_pct": 20.6, "pkg": "mvcc"},
+    {"func": "(*keyIndex).isEmpty", "flat_pct": 7.0, "cum_pct": 7.3, "pkg": "mvcc"},
+    {"func": "btree items.find", "flat_pct": 1.1, "cum_pct": 25.5, "pkg": "btree"},
+    {"func": "sort.Search", "flat_pct": 1.2, "cum_pct": 23.6, "pkg": "sort"},
+    {"func": "btree node.get", "flat_pct": 1.6, "cum_pct": 23.0, "pkg": "btree"},
+    {"func": "runtime.mapassign", "flat_pct": 1.5, "cum_pct": 9.4, "pkg": "runtime"}
+  ],
+  "optimization_backlog": [
+    {
+      "priority": 1,
+      "name": "btree-get-inline",
+      "desc": "BTree.Get cost=81 vs budget=80 - just 1 over. Inlining would eliminate call overhead on every key lookup.",
+      "compiler_file": "cmd/compile/internal/inline/inl.go",
+      "expected_impact": "2-5% on BenchmarkIndexGet",
+      "risk": "low - tiny budget increase"
+    },
+    {
+      "priority": 2,
+      "name": "findGeneration-inline",
+      "desc": "keyIndex.findGeneration cost=81 vs budget=80 - 1 over. Hot in every get path.",
+      "compiler_file": "cmd/compile/internal/inline/inl.go",
+      "expected_impact": "1-3% on index benchmarks",
+      "risk": "low"
+    },
+    {
+      "priority": 3,
+      "name": "bce-key-index",
+      "desc": "19 remaining bounds checks in key_index.go. Improving prove pass for slice access patterns.",
+      "compiler_file": "cmd/compile/internal/ssa/prove.go",
+      "expected_impact": "1-2% on compact/walk",
+      "risk": "medium"
+    },
+    {
+      "priority": 4,
+      "name": "btree-mutableChild-inline",
+      "desc": "node.mutableChild cost=86 vs budget=80. Called on every tree mutation.",
+      "compiler_file": "cmd/compile/internal/inline/inl.go",
+      "expected_impact": "1-2% on Put benchmarks",
+      "risk": "low"
+    }
+  ],
   "attempt_log": [],
   "successful_optimizations": [],
-  "last_run": "2026-04-30T09:06:26Z",
-  "last_tasks": [5, 8],
-  "task_notes": {
-    "task5": "Skipped - no side compiler or optimizations to benchmark yet"
-  }
+  "benchmark_baselines": {
+    "date": "2026-04-30",
+    "compiler": "go1.26.2",
+    "results": {
+      "BenchmarkIndexCompact1": "138.6 ns/op",
+      "BenchmarkIndexCompact100": "10900 ns/op",
+      "BenchmarkIndexCompact10000": "1007873 ns/op",
+      "BenchmarkIndexPut": "2060 ns/op",
+      "BenchmarkIndexGet": "1837 ns/op",
+      "BenchmarkStoreTxnPut": "17308 ns/op (6756 B/op, 53 allocs/op)",
+      "BenchmarkStoreRestoreRevs1": "3630 ns/op (540 B/op, 6 allocs/op)"
+    }
+  },
+  "last_run": "2026-04-30T09:30:00Z",
+  "last_tasks": [1, 2, 8]
 }
