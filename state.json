@@ -6,7 +6,7 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T10:21:00Z",
+    "last_validated": "2026-04-30T10:31:00Z",
     "tests_passed": ["server/storage/mvcc"]
   },
   "hot_paths": [
@@ -39,31 +39,54 @@
       "expected_impact": "1-2% on Put benchmarks",
       "risk": "medium-high",
       "status": "untried"
+    },
+    {
+      "priority": 3,
+      "name": "inline-items-find",
+      "desc": "items.find cost=119 dominates lookup path at 30% cum CPU. Mid-call splitting or partial inlining could help.",
+      "compiler_file": "cmd/compile/internal/inline/inl.go",
+      "expected_impact": "2-5% on Get benchmarks",
+      "risk": "medium",
+      "status": "untried"
     }
   ],
   "attempt_log": [
     {
       "date": "2026-04-30",
       "name": "raise-inline-budget-85",
-      "result": "no_significant_change",
-      "details": "Raised inlineMaxBudget 80->85. BTree.Get confirmed inlinable (cost 72). Benchstat: no significant change on any benchmark (p>0.05). Geomean -0.56% but not significant. Hypothesis: inlining BTree.Get alone insufficient because items.find (cost 119) and node.get (cost 167) remain non-inlined, dominating the call path."
+      "desc": "Raised inlineMaxBudget from 80 to 85 to inline BTree.Get (cost=81) and node.get.",
+      "result": "no_improvement",
+      "details": "Both BTree.Get and node.get confirmed inlined. Benchstat showed no significant improvement on IndexGet (p=0.075). IndexCompact1000000 regressed +0.82% (p=0.005), likely due to increased code size hurting icache. Call overhead was negligible vs actual work.",
+      "lesson": "Inlining borderline functions in btree lookup doesn't help when the hot loop is dominated by comparison work (bytes.Compare at 14% flat). Focus on reducing comparison cost or bounds checks instead."
     }
   ],
   "successful_optimizations": [],
   "benchmark_baselines": {
     "date": "2026-04-30",
-    "compiler": "go1.26.2 (stock)",
+    "compiler": "system go1.26.2",
     "results": {
-      "BenchmarkIndexCompact1": "133.4 ns/op",
-      "BenchmarkIndexCompact100": "10.34 µs/op",
-      "BenchmarkIndexCompact10000": "1.047 ms/op",
-      "BenchmarkIndexCompact100000": "4.799 ms/op",
-      "BenchmarkIndexCompact1000000": "212.6 ms/op",
-      "BenchmarkIndexPut": "2.255 µs/op",
-      "BenchmarkIndexGet": "1.955 µs/op"
+      "BenchmarkIndexCompact1": "130.9 ns/op",
+      "BenchmarkIndexCompact100": "10.83 µs/op",
+      "BenchmarkIndexCompact10000": "1.084 ms/op",
+      "BenchmarkIndexCompact100000": "3.862 ms/op",
+      "BenchmarkIndexCompact1000000": "158.1 ms/op",
+      "BenchmarkIndexPut": "1.971 µs/op",
+      "BenchmarkIndexGet": "1.641 µs/op"
     }
   },
-  "last_run": "2026-04-30T10:21:00Z",
-  "last_tasks": [1, 4, 5, 8, 9],
-  "task_substitutions": "Task 1: rebuilt side compiler. Task 5 selected -> ran Task 4 (implement raise-inline-budget-85). Task 5: benchmarked, no significant improvement."
+  "codegen_analysis": {
+    "date": "2026-04-30",
+    "key_findings": [
+      "BTree.Get cost=81 vs budget=80: inlining did NOT help (tested)",
+      "items.find cost=119: too large, dominates at 30% cum CPU",
+      "21 bounds checks in key_index.go - next priority",
+      "walk reverse iteration g.revs[l-i-1] not proved safe",
+      "keyIndex.put cost=264: too complex for inlining",
+      "bytes.Compare at 14% flat - dominant cost in compaction",
+      "GC/malloc at ~6% - escape analysis opportunities exist"
+    ]
+  },
+  "last_run": "2026-04-30T10:31:00Z",
+  "last_tasks": [4, 8, 9],
+  "task_substitutions": "Tasks 4,3 selected. Task 3 already complete (backlog exists). Task 4 executed: raise-inline-budget-85 - no improvement."
 }
