@@ -6,41 +6,42 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "github.com/golang/go tag go1.26.0",
-    "last_validated": "2026-04-30T09:40:00Z",
+    "last_validated": "2026-04-30T09:58:00Z",
     "tests_passed": ["server/storage/mvcc"]
   },
   "hot_paths": [
-    {"func": "(*keyIndex).compact", "flat_pct": 13.0, "cum_pct": 43.2, "pkg": "mvcc"},
-    {"func": "cmpbody (bytes.Compare)", "flat_pct": 12.5, "cum_pct": 12.5, "pkg": "runtime"},
-    {"func": "(*generation).walk", "flat_pct": 12.5, "cum_pct": 22.2, "pkg": "mvcc"},
-    {"func": "(*keyIndex).Less", "flat_pct": 7.9, "cum_pct": 20.6, "pkg": "mvcc"},
-    {"func": "(*keyIndex).isEmpty", "flat_pct": 7.0, "cum_pct": 7.3, "pkg": "mvcc"},
-    {"func": "btree items.find", "flat_pct": 1.1, "cum_pct": 25.5, "pkg": "btree"},
-    {"func": "sort.Search", "flat_pct": 1.2, "cum_pct": 23.6, "pkg": "sort"},
-    {"func": "btree node.get", "flat_pct": 1.6, "cum_pct": 23.0, "pkg": "btree"},
-    {"func": "runtime.mapassign", "flat_pct": 1.5, "cum_pct": 9.4, "pkg": "runtime"}
+    {"func": "(*keyIndex).compact", "flat_pct": 7.15, "cum_pct": 27.29, "pkg": "mvcc"},
+    {"func": "(*keyIndex).Less", "flat_pct": 8.43, "cum_pct": 23.06, "pkg": "mvcc"},
+    {"func": "(*generation).walk", "flat_pct": 8.38, "cum_pct": 16.32, "pkg": "mvcc"},
+    {"func": "cmpbody (bytes.Compare)", "flat_pct": 14.32, "cum_pct": 14.32, "pkg": "runtime"},
+    {"func": "items.find", "flat_pct": 0.98, "cum_pct": 29.85, "pkg": "btree"},
+    {"func": "sort.Search", "flat_pct": 1.27, "cum_pct": 28.07, "pkg": "sort"},
+    {"func": "(*node).get", "flat_pct": 1.67, "cum_pct": 27.21, "pkg": "btree"},
+    {"func": "(*BTree).Get", "flat_pct": 0, "cum_pct": 27.21, "pkg": "btree"},
+    {"func": "(*keyIndex).doCompact", "flat_pct": 0.59, "cum_pct": 16.90, "pkg": "mvcc"},
+    {"func": "runtime.mallocgc", "flat_pct": 0.49, "cum_pct": 5.84, "pkg": "runtime"}
   ],
   "optimization_backlog": [
     {
       "priority": 1,
       "name": "raise-inline-budget-85",
-      "desc": "Raise inlineMaxBudget from 80 to 85. BTree.Get (cost 81) and findGeneration (cost 81) miss inlining by 1. mutableChild at cost=80 is borderline.",
+      "desc": "Raise inlineMaxBudget from 80 to 85. BTree.Get (cost 81) misses inlining by 1. This is the #1 cum% function after the compact loop itself.",
       "compiler_file": "cmd/compile/internal/inline/inl.go",
-      "expected_impact": "2-5% on BenchmarkIndexGet, 1-3% on compact/walk",
+      "expected_impact": "2-5% on BenchmarkIndexGet (BTree.Get at 27% cum)",
       "risk": "low-medium"
     },
     {
       "priority": 2,
       "name": "bce-key-index-hot",
-      "desc": "22 bounds checks in key_index.go. Hot ones: findGeneration lines 296,302,306,307 (ki.generations[cg] and g.revs access); walk line 362 (g.revs[l-i-1] reverse iteration); doCompact lines 269,272,276 (generations access). Prove pass doesn't eliminate reverse-iteration pattern l-i-1.",
+      "desc": "21 bounds checks in key_index.go. Hot ones in findGeneration (lines 296,302,306,307), walk (line 362 reverse iteration), doCompact (lines 269,272). Prove pass misses reverse-iteration pattern.",
       "compiler_file": "cmd/compile/internal/ssa/prove.go",
-      "expected_impact": "1-3% on compact benchmarks (22 BCE in hot file)",
+      "expected_impact": "1-3% on compact benchmarks",
       "risk": "medium"
     },
     {
       "priority": 3,
       "name": "escape-keyindex-put",
-      "desc": "keyIndex.put: append(ki.generations, generation{}) and append(g.revs, rev) escape to heap. Also logger param leaks. unsafeGet: &keyIndex{} escapes to heap for btree lookup.",
+      "desc": "keyIndex.put: append patterns escape to heap. unsafeGet: &keyIndex{} escapes for btree lookup.",
       "compiler_file": "cmd/compile/internal/escape/escape.go",
       "expected_impact": "1-2% on Put benchmarks (fewer allocs)",
       "risk": "medium-high"
@@ -50,32 +51,31 @@
   "successful_optimizations": [],
   "benchmark_baselines": {
     "date": "2026-04-30",
-    "compiler": "go1.26.2",
+    "compiler": "go1.26.0 (side compiler)",
     "results": {
-      "BenchmarkIndexCompact1": "138.6 ns/op",
-      "BenchmarkIndexCompact100": "10900 ns/op",
-      "BenchmarkIndexCompact10000": "1007873 ns/op",
-      "BenchmarkIndexPut": "2060 ns/op",
-      "BenchmarkIndexGet": "1837 ns/op",
-      "BenchmarkStoreTxnPut": "17308 ns/op (6756 B/op, 53 allocs/op)",
-      "BenchmarkStoreRestoreRevs1": "3630 ns/op (540 B/op, 6 allocs/op)"
+      "BenchmarkIndexCompact1": "137.4 ns/op",
+      "BenchmarkIndexCompact100": "11283 ns/op",
+      "BenchmarkIndexCompact10000": "1012555 ns/op",
+      "BenchmarkIndexCompact100000": "5672169 ns/op",
+      "BenchmarkIndexCompact1000000": "159485376 ns/op",
+      "BenchmarkIndexPut": "2139 ns/op",
+      "BenchmarkIndexGet": "1727 ns/op"
     }
   },
   "codegen_analysis": {
     "date": "2026-04-30",
     "key_findings": [
-      "BTree.Get cost=81 vs budget=80: NOT inlined",
-      "findGeneration cost=81 vs budget=80: NOT inlined",
-      "mutableChild cost=80: borderline, inlined in some contexts",
-      "items.find cost=119: too large even with budget increase",
-      "node.get cost=167: too large",
-      "22 bounds checks in key_index.go hot paths (findGeneration, walk, doCompact, compact)",
-      "walk reverse iteration g.revs[l-i-1] not proved safe by prove pass",
-      "keyIndex.put: 3 heap escapes from append patterns",
-      "unsafeGet: &keyIndex{} escapes for btree lookup key"
+      "BTree.Get cost=81 vs budget=80: NOT inlined (27% cum CPU)",
+      "items.find cost=119: too large (30% cum CPU)",
+      "node.get cost=167: too large (27% cum CPU)",
+      "21 bounds checks in key_index.go",
+      "walk reverse iteration g.revs[l-i-1] not proved safe",
+      "keyIndex.put cost=264: too complex",
+      "mutableChild cost=80: borderline inlined",
+      "GC/malloc at ~6% - escape analysis opportunities exist"
     ]
   },
-  "last_run": "2026-04-30T09:40:00Z",
-  "last_tasks": [1, 3, 8],
-  "task_substitutions": "Tasks 1,3,8 selected. Task 1: rebuilt side compiler (ephemeral). Task 3: refined analysis - discovered 22 BCE in key_index.go, confirmed inlining misses, detailed escape analysis."
+  "last_run": "2026-04-30T09:58:00Z",
+  "last_tasks": [1, 2, 8, 9],
+  "task_substitutions": "Tasks 1,2,8 selected. All ran successfully. Task 1: rebuilt side compiler from github.com/golang/go. Task 2: full profiling of mvcc index benchmarks with detailed CPU profile analysis."
 }
