@@ -6,9 +6,9 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T20:45:00Z",
+    "last_validated": "2026-04-30T21:47:00Z",
     "tests_passed": ["server/storage/mvcc"],
-    "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override"
+    "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override. Previous prove-strict-subtraction patch applied."
   },
   "hot_paths": [
     {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
@@ -31,6 +31,15 @@
   "optimization_backlog": [
     {
       "priority": 1,
+      "name": "signed-sub-flowfacts",
+      "desc": "Implement signed subtraction facts at prove.go:2511 FIXME. For OpSub when both args non-negative and no overflow, derive v >= 0 and v <= x. Would help BCE for l-i-1 pattern in walk (line 362).",
+      "compiler_file": "cmd/compile/internal/ssa/prove.go:2511",
+      "expected_impact": "2-5% on compact benchmarks (eliminates BCE in walk hot loop)",
+      "risk": "medium - need careful overflow check",
+      "status": "untried"
+    },
+    {
+      "priority": 2,
       "name": "walk-len-invariant-tracking",
       "desc": "Teach prove pass that l := len(s) before range s loop implies l == len(s) if no writes observed. Would eliminate BCE at walk line 362.",
       "compiler_file": "cmd/compile/internal/ssa/prove.go",
@@ -39,16 +48,16 @@
       "status": "untried"
     },
     {
-      "priority": 2,
-      "name": "signed-sub-branch-facts",
-      "desc": "Implement signed subtraction facts in addBranchRestrictions (FIXME at prove.go:2511).",
-      "compiler_file": "cmd/compile/internal/ssa/prove.go:2511",
-      "expected_impact": "unknown",
-      "risk": "medium",
+      "priority": 3,
+      "name": "findGeneration-cost-reduction",
+      "desc": "findGeneration costs 81 (budget 80). Investigate reducing struct copy cost or finding compiler heuristic to lower cost by 2. Would inline into get() and doCompact().",
+      "compiler_file": "cmd/compile/internal/inline/inl.go",
+      "expected_impact": "1-3% on Get benchmarks if inlined",
+      "risk": "low - minor budget adjustment",
       "status": "untried"
     },
     {
-      "priority": 3,
+      "priority": 4,
       "name": "enable-newinliner",
       "desc": "Activate NewInliner experiment to double budget to 160. Would inline items.find (119), BTree.Get (81).",
       "compiler_file": "src/internal/goexperiment/exp_newinliner_off.go",
@@ -57,7 +66,7 @@
       "status": "untried"
     },
     {
-      "priority": 4,
+      "priority": 5,
       "name": "bce-walk-alias-analysis",
       "desc": "generation.walk g.revs[l-i-1] bounds check not eliminable without alias analysis.",
       "compiler_file": "cmd/compile/internal/ssa/prove.go + escape analysis",
@@ -66,6 +75,17 @@
       "status": "blocked_by_design"
     }
   ],
+  "bce_analysis": {
+    "date": "2026-04-30T21:47:00Z",
+    "key_index_bce_count": 21,
+    "hot_bce": [
+      {"line": 362, "code": "g.revs[l-i-1]", "func": "walk", "note": "Hot loop reverse iteration. Main target."},
+      {"line": 161, "code": "g.revs[n]", "func": "get", "note": "After walk returns index"},
+      {"line": 269, "code": "g.revs[len(g.revs)-1]", "func": "doCompact loop", "note": "Tombstone check"},
+      {"line": 296, "code": "ki.generations[cg]", "func": "findGeneration", "note": "Loop var index"},
+      {"line": 306, "code": "g.revs[0]", "func": "findGeneration", "note": "First rev check"}
+    ]
+  },
   "attempt_log": [
     {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement", "detail": "findGeneration inlined but no measurable impact."},
     {"date": "2026-04-30", "name": "bce-walk-reverse-iteration", "result": "cannot_fix", "detail": "Alias analysis limitation - closure could modify slice."},
@@ -97,7 +117,7 @@
       "BenchmarkIndexGet": "1.825 us/op"
     }
   },
-  "last_run": "2026-04-30T20:45:00Z",
-  "last_tasks": [4, 3, 8, 9],
-  "task_substitutions": "Tasks 5,3,8 selected. Task 5 substituted to Task 4 (no untested modification). Tried inline-free-continue-break, not significant."
+  "last_run": "2026-04-30T21:47:00Z",
+  "last_tasks": [1, 3, 8, 9],
+  "task_substitutions": "Tasks 3,2,8 selected. Both substituted to Task 1 first (side compiler not available). Then Task 3 (codegen analysis) completed."
 }
