@@ -6,7 +6,7 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "github.com/golang/go tag go1.26.0",
-    "last_validated": "2026-04-30T09:30:00Z",
+    "last_validated": "2026-04-30T09:40:00Z",
     "tests_passed": ["server/storage/mvcc"]
   },
   "hot_paths": [
@@ -24,27 +24,26 @@
     {
       "priority": 1,
       "name": "raise-inline-budget-85",
-      "desc": "Raise inlineMaxBudget from 80 to 85. BTree.Get (cost 81) and findGeneration (cost 81) are NOT inlined despite relaxed mode allowing them - score adjustment demotes them. A 80->85 base budget makes them unconditionally inlineable. Also captures BTree.Clear (cost 85).",
+      "desc": "Raise inlineMaxBudget from 80 to 85. BTree.Get (cost 81) and findGeneration (cost 81) miss inlining by 1. mutableChild at cost=80 is borderline.",
       "compiler_file": "cmd/compile/internal/inline/inl.go",
-      "expected_impact": "2-5% on BenchmarkIndexGet, 1-3% on compact/walk benchmarks",
-      "risk": "low-medium - small budget increase, may inline a few more functions globally",
-      "analysis": "BTree.Get cost=81 (1 over), findGeneration cost=81 (1 over). Relaxed mode marks them 'can inline' but they're NOT actually inlined at call sites due to score demotion. node.mutableChild cost=86 also captured at budget=85+relaxed."
+      "expected_impact": "2-5% on BenchmarkIndexGet, 1-3% on compact/walk",
+      "risk": "low-medium"
     },
     {
       "priority": 2,
-      "name": "bce-key-index",
-      "desc": "Only 3 BCE found in testutil/hash.go. Main key_index.go hot paths have minimal BCE opportunities in go1.26. Lower priority than inlining.",
+      "name": "bce-key-index-hot",
+      "desc": "22 bounds checks in key_index.go. Hot ones: findGeneration lines 296,302,306,307 (ki.generations[cg] and g.revs access); walk line 362 (g.revs[l-i-1] reverse iteration); doCompact lines 269,272,276 (generations access). Prove pass doesn't eliminate reverse-iteration pattern l-i-1.",
       "compiler_file": "cmd/compile/internal/ssa/prove.go",
-      "expected_impact": "0.5-1% on compact/walk",
+      "expected_impact": "1-3% on compact benchmarks (22 BCE in hot file)",
       "risk": "medium"
     },
     {
       "priority": 3,
       "name": "escape-keyindex-put",
-      "desc": "keyIndex.put has append() escaping to heap for generations and revs slices. Improving escape analysis for append patterns could reduce GC pressure.",
+      "desc": "keyIndex.put: append(ki.generations, generation{}) and append(g.revs, rev) escape to heap. Also logger param leaks. unsafeGet: &keyIndex{} escapes to heap for btree lookup.",
       "compiler_file": "cmd/compile/internal/escape/escape.go",
       "expected_impact": "1-2% on Put benchmarks (fewer allocs)",
-      "risk": "medium-high - escape analysis changes are delicate"
+      "risk": "medium-high"
     }
   ],
   "attempt_log": [],
@@ -65,16 +64,18 @@
   "codegen_analysis": {
     "date": "2026-04-30",
     "key_findings": [
-      "BTree.Get cost=81 vs budget=80: NOT inlined despite relaxed mode (score demotion)",
-      "findGeneration cost=81 vs budget=80: NOT inlined despite relaxed mode",
-      "items.find cost=119: inlined in some contexts via generics specialization",
-      "node.mutableChild cost=86: not inlined, affects Put path",
-      "node.get cost=167: too expensive even for relaxed budget (160)",
-      "key_index.go escape: append in put() escapes generations/revs to heap",
-      "BCE: only 3 bounds checks found in testutil, main hot paths well-optimized"
+      "BTree.Get cost=81 vs budget=80: NOT inlined",
+      "findGeneration cost=81 vs budget=80: NOT inlined",
+      "mutableChild cost=80: borderline, inlined in some contexts",
+      "items.find cost=119: too large even with budget increase",
+      "node.get cost=167: too large",
+      "22 bounds checks in key_index.go hot paths (findGeneration, walk, doCompact, compact)",
+      "walk reverse iteration g.revs[l-i-1] not proved safe by prove pass",
+      "keyIndex.put: 3 heap escapes from append patterns",
+      "unsafeGet: &keyIndex{} escapes for btree lookup key"
     ]
   },
-  "last_run": "2026-04-30T09:30:00Z",
+  "last_run": "2026-04-30T09:40:00Z",
   "last_tasks": [1, 3, 8],
-  "task_substitutions": "Tasks 3,1,8 selected. Task 1 re-ran (side compiler rebuilt from scratch since ephemeral). Task 3 completed with refined analysis."
+  "task_substitutions": "Tasks 1,3,8 selected. Task 1: rebuilt side compiler (ephemeral). Task 3: refined analysis - discovered 22 BCE in key_index.go, confirmed inlining misses, detailed escape analysis."
 }
