@@ -98,18 +98,13 @@ steps:
       BENCH_FUNCS=$(grep -r "func Benchmark" --include="*_test.go" . | wc -l)
       echo "$BENCH_FUNCS" > /tmp/gh-aw/bench_func_count.txt
 
-      # Check if side compiler exists
-      [ -d "/tmp/goopt/go" ] && echo 1 > /tmp/gh-aw/has_side_compiler.txt || echo 0 > /tmp/gh-aw/has_side_compiler.txt
+      # Count tracked compiler optimization patches in repo
+      PATCH_COUNT=$(find compiler-patches -maxdepth 1 -name "*.patch" 2>/dev/null | wc -l)
+      echo "$PATCH_COUNT" > /tmp/gh-aw/compiler_patch_count.txt
 
-      # Fetch open GoOpt issues and PRs
+      # Fetch open GoOpt issues
       gh issue list --state open --label compiler --json number 2>/dev/null \
         > /tmp/gh-aw/goopt_issues.json || echo "[]" > /tmp/gh-aw/goopt_issues.json
-      gh pr list --state open --limit 50 --json number,title 2>/dev/null \
-        | python3 -c "
-      import json, sys
-      d = json.load(sys.stdin)
-      print(json.dumps([x for x in d if x['title'].startswith('[GoOpt]')]))" \
-        > /tmp/gh-aw/goopt_prs.json || echo "[]" > /tmp/gh-aw/goopt_prs.json
 
       python3 - << 'EOF'
       import json, os, random
@@ -117,12 +112,10 @@ steps:
       go_version = open('/tmp/gh-aw/go_version.txt').read().strip()
       bench_files = int(open('/tmp/gh-aw/bench_file_count.txt').read().strip() or 0)
       bench_funcs = int(open('/tmp/gh-aw/bench_func_count.txt').read().strip() or 0)
-      has_side_compiler = int(open('/tmp/gh-aw/has_side_compiler.txt').read().strip() or 0)
+      compiler_patch_count = int(open('/tmp/gh-aw/compiler_patch_count.txt').read().strip() or 0)
       goopt_issues = json.load(open('/tmp/gh-aw/goopt_issues.json'))
-      goopt_prs = json.load(open('/tmp/gh-aw/goopt_prs.json'))
 
       n_issues = len(goopt_issues)
-      n_prs = len(goopt_prs)
 
       task_names = {
           1: 'Setup Side Compiler',
@@ -130,28 +123,24 @@ steps:
           3: 'Identify Codegen Opportunities',
           4: 'Implement Compiler Optimization',
           5: 'Benchmark and Validate',
-          6: 'Document and Propose Upstream',
-          7: 'Maintain GoOpt PRs',
           8: 'Update Monthly Status',
       }
 
-      # Weights depend on progress state
-      weights = {
-          1: 10.0 if not has_side_compiler else 1.0,
-          2: 8.0 if has_side_compiler else 2.0,
-          3: 6.0 if has_side_compiler else 1.0,
-          4: 8.0 if has_side_compiler else 0.5,
-          5: 8.0 if has_side_compiler else 0.5,
-          6: 3.0 if has_side_compiler else 0.2,
-          7: float(n_prs) * 2.0 if n_prs > 0 else 0.0,
-          8: 2.0,
+      # Selection is intentionally patch-driven, not side-compiler-state driven.
+      # Task 2 remains important but should run less frequently than 3/4/5.
+      selection_weights = {
+          1: 0.5,
+          2: 1.5 if compiler_patch_count == 0 else 0.8,
+          3: 10.0,
+          4: 12.0,
+          5: 12.0,
       }
 
       run_id = int(os.environ.get('GITHUB_RUN_ID', '0'))
       rng = random.Random(run_id)
 
-      task_ids = list(weights.keys())
-      task_weights = [weights[t] for t in task_ids]
+      task_ids = list(selection_weights.keys())
+      task_weights = [selection_weights[t] for t in task_ids]
 
       chosen, seen = [], set()
       for t in rng.choices(task_ids, weights=task_weights, k=30):
@@ -169,14 +158,14 @@ steps:
       print(f'Go version       : {go_version}')
       print(f'Benchmark files  : {bench_files}')
       print(f'Benchmark funcs  : {bench_funcs}')
-      print(f'Side compiler    : {bool(has_side_compiler)}')
+      print(f'Patch count      : {compiler_patch_count}')
       print(f'Open GoOpt issues: {n_issues}')
-      print(f'Open GoOpt PRs   : {n_prs}')
       print()
       print('Task weights:')
-      for t, w in weights.items():
+      for t, w in selection_weights.items():
           tag = ' <-- SELECTED' if t in chosen else ''
           print(f'  Task {t:2d} ({task_names[t]}): weight {w:.1f}{tag}')
+      print('  Task  8 (Update Monthly Status): always included')
       print()
       print(f'Selected tasks: {chosen} = {[task_names[t] for t in chosen]}')
 
@@ -184,11 +173,10 @@ steps:
           'go_version': go_version,
           'bench_files': bench_files,
           'bench_funcs': bench_funcs,
-          'has_side_compiler': bool(has_side_compiler),
+               'compiler_patch_count': compiler_patch_count,
           'n_issues': n_issues,
-          'n_prs': n_prs,
           'task_names': task_names,
-          'weights': {str(k): round(v, 2) for k, v in weights.items()},
+               'weights': {str(k): round(v, 2) for k, v in selection_weights.items()},
           'selected_tasks': chosen,
       }
       with open('/tmp/gh-aw/task_selection.json', 'w') as f:
@@ -260,7 +248,7 @@ Focus optimization efforts on these hot-path packages (in priority order):
 
 ## Workflow
 
-At the start of your run, read `/tmp/gh-aw/task_selection.json`. It contains `selected_tasks` (two tasks chosen by weighted random draw) and state flags describing what infrastructure exists.
+At the start of your run, read `/tmp/gh-aw/task_selection.json`. It contains `selected_tasks` (two tasks chosen by weighted random draw) and state flags describing optimization progress.
 
 **Execute the selected tasks, but apply task substitution if a selected task cannot be performed. Then always do Task 8 and Task 9.**
 
@@ -270,11 +258,10 @@ Tasks have **prerequisites**. If a selected task's prerequisites are not met, su
 - **Task 2** (Profile Hot Paths): requires side compiler (Task 1 completed)
 - **Task 3** (Identify Codegen Opportunities): requires profiling results (Task 2 completed at least once)
 - **Task 4** (Implement Compiler Optimization): requires optimization backlog (Task 3 completed at least once)
-- **Task 5** (Benchmark and Validate): requires a compiler modification to test (Task 4 completed in this or a prior run)
-- **Task 6** (Document and Propose Upstream): requires a validated optimization with benchstat evidence (Task 5 completed with positive results)
-- **Task 7** (Maintain GoOpt PRs): requires open GoOpt PRs to exist — if none, skip entirely
+- **Task 5** (Benchmark and Validate): requires a compiler modification to test (Task 4 completed in this or a prior run). If a significant positive result is validated, Task 5 MUST immediately perform documentation/proposal actions (formerly Task 6) in the same run.
 
 **Substitution rules:**
+
 1. Check memory and the state flags in `task_selection.json` to determine what has been completed in prior runs.
 2. If a selected task cannot run (e.g., Task 4 selected but no optimization backlog exists), walk back the dependency chain to the first incomplete prerequisite task and run that instead.
 3. If both selected tasks resolve to the same substitute, run that task once and then advance to the next task in the chain if time permits.
@@ -459,7 +446,7 @@ Tasks have **prerequisites**. If a selected task's prerequisites are not met, su
    benchstat /tmp/goopt/baseline.txt /tmp/goopt/optimized.txt
    ```
 5. Evaluate results:
-   - **Significant improvement** (p < 0.05, >= 2% improvement): proceed to Task 6
+   - **Significant improvement** (p < 0.05, >= 2% improvement): immediately execute documentation/proposal steps in this same run (formerly Task 6)
    - **No significant change**: record in memory, try next optimization from backlog
    - **Regression**: revert the change, document why it regressed, update memory
 6. Also check for regressions in other benchmark packages:
@@ -470,45 +457,11 @@ Tasks have **prerequisites**. If a selected task's prerequisites are not met, su
      ./server/storage/wal/... ./server/storage/backend/...
    ```
 7. Record complete benchstat output in memory. Note which specific benchmarks improved.
-
----
-
-### Task 6: Document and Propose Upstream
-
-**Goal**: For validated optimizations, create a PR documenting the compiler change, its impact, and prepare it for potential upstream Go proposal.
-
-1. Read memory for successful optimizations with benchstat evidence.
-2. Create a branch: `goopt/<optimization-name>`
-3. Add documentation to the PR:
-   - `compiler-patches/<name>.patch` — the compiler diff
-   - `compiler-patches/<name>.md` — documentation including:
-     - **Optimization**: what the compiler change does
-     - **Motivation**: which hot path benefits and why
-     - **Compiler change**: description of the modification with file/line references
-     - **Benchstat results**: full before/after comparison
-     - **Correctness**: compiler test suite and etcd test results
-     - **Trade-offs**: compile time impact, binary size change, any edge cases
-     - **Upstream potential**: whether this is a general improvement or etcd-specific
-4. Create a draft PR with:
-   - ⚙️ GoOpt AI disclosure
-   - Summary of the optimization and its measured impact
-   - Full benchstat output
-   - The compiler patch
-   - Instructions to reproduce
-5. If the optimization is general (not etcd-specific), note in the PR that it could be proposed upstream to the Go project via a CL (changelist) on go-review.googlesource.com.
-6. Update memory with: PR number, optimization documented, upstream potential assessment.
-
----
-
-### Task 7: Maintain GoOpt PRs
-
-1. List all open PRs with the `[GoOpt]` title prefix.
-2. For each PR:
-   - Fix CI failures caused by your changes by pushing updates
-   - Resolve merge conflicts by rebasing
-   - Respond to reviewer feedback with updated benchmarks if requested
-   - If blocked for multiple runs, comment and leave for human review
-3. Update memory.
+8. If significant improvement is validated, document and propose upstream in the same run:
+   - Create `compiler-patches/<name>.patch` with the compiler diff
+   - Create `compiler-patches/<name>.md` including optimization summary, motivation, compiler files touched, full benchstat, correctness checks, trade-offs, and upstream potential
+   - Create or update a draft PR with ⚙️ GoOpt disclosure and reproducibility steps
+   - Update memory with PR number and upstream potential assessment
 
 ---
 
