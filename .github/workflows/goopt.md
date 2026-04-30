@@ -27,6 +27,7 @@ network:
     - defaults
     - go
     - github
+    - "go.googlesource.com"
 
 engine:
   id: copilot

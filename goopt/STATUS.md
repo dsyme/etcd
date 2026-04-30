@@ -21,6 +21,7 @@ etcd's hot paths, validated by the project's benchmark suite.
 ## Hot Path Profile
 
 From `server/storage/mvcc` index benchmarks (2026-04-30):
+Latest CPU profile from `server/storage/mvcc` index benchmarks (2026-04-30):
 
 | Function | Flat % | Cum % | Package |
 |---|---|---|---|
