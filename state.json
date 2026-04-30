@@ -6,8 +6,9 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T12:06:00Z",
-    "tests_passed": ["server/storage/mvcc"]
+    "last_validated": "2026-04-30T12:41:00Z",
+    "tests_passed": ["server/storage/mvcc"],
+    "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override"
   },
   "hot_paths": [
     {"func": "(*keyIndex).compact", "flat_pct": 13.42, "cum_pct": 45.47, "pkg": "mvcc"},
@@ -30,15 +31,6 @@
   "optimization_backlog": [
     {
       "priority": 1,
-      "name": "raise-inline-budget-85",
-      "desc": "Raise inlineMaxBudget from 80 to 85. BTree.Get (cost 81), keyIndex.findGeneration (cost 81) miss inlining by 1.",
-      "compiler_file": "cmd/compile/internal/inline/inl.go",
-      "expected_impact": "2-5% on BenchmarkIndexGet and BenchmarkIndexCompact",
-      "risk": "low-medium",
-      "status": "untried"
-    },
-    {
-      "priority": 2,
       "name": "bce-key-index-hot",
       "desc": "21 bounds checks in key_index.go. generation.walk reverse-iteration pattern g.revs[l-i-1] not proved safe.",
       "compiler_file": "cmd/compile/internal/ssa/prove.go",
@@ -47,31 +39,49 @@
       "status": "untried"
     },
     {
-      "priority": 3,
+      "priority": 2,
       "name": "escape-keyindex-put",
       "desc": "keyIndex.put: append patterns escape to heap. GC at ~9% of CPU.",
       "compiler_file": "cmd/compile/internal/escape/escape.go",
       "expected_impact": "1-2% on Put benchmarks",
       "risk": "medium-high",
       "status": "untried"
+    },
+    {
+      "priority": 3,
+      "name": "inline-btree-find-specialize",
+      "desc": "items.find (cost 119) and node.get (cost 167) too complex for budget. Consider specialization or partial inlining of sort.Search pattern.",
+      "compiler_file": "cmd/compile/internal/inline/inl.go",
+      "expected_impact": "2-5% on Get/Compact benchmarks",
+      "risk": "medium",
+      "status": "untried"
     }
   ],
-  "attempt_log": [],
+  "attempt_log": [
+    {
+      "date": "2026-04-30",
+      "name": "raise-inline-budget-85",
+      "desc": "Raised inlineMaxBudget from 80 to 85",
+      "result": "no_significant_improvement",
+      "detail": "BTree.Get (cost 81) now inlinable but hot inner funcs (items.find cost 119, node.get cost 167) still too big. Only IndexCompact100 showed -1.28% (p=0.038), geomean -0.09%. Not meaningful.",
+      "lesson": "Budget increase too small to reach truly hot inner functions. Need targeted approach (BCE, escape analysis) or partial inlining."
+    }
+  ],
   "successful_optimizations": [],
   "benchmark_baselines": {
     "date": "2026-04-30",
-    "compiler": "go1.26.0 (side compiler, unmodified)",
+    "compiler": "go1.26.2 (system, stock)",
     "results": {
-      "BenchmarkIndexCompact1": "128.4 ns/op",
-      "BenchmarkIndexCompact100": "10259 ns/op",
-      "BenchmarkIndexCompact10000": "1024933 ns/op",
-      "BenchmarkIndexCompact100000": "4853806 ns/op",
-      "BenchmarkIndexCompact1000000": "208591136 ns/op",
-      "BenchmarkIndexPut": "2119 ns/op",
-      "BenchmarkIndexGet": "1906 ns/op"
+      "BenchmarkIndexCompact1": "127.3 ns/op",
+      "BenchmarkIndexCompact100": "10.69 µs/op",
+      "BenchmarkIndexCompact10000": "1.069 ms/op",
+      "BenchmarkIndexCompact100000": "3.788 ms/op",
+      "BenchmarkIndexCompact1000000": "147.9 ms/op",
+      "BenchmarkIndexPut": "1.912 µs/op",
+      "BenchmarkIndexGet": "1.591 µs/op"
     }
   },
-  "last_run": "2026-04-30T12:06:00Z",
-  "last_tasks": [1, 8, 9],
-  "task_substitutions": "Tasks 1,8 selected. Task 1 executed (side compiler rebuilt). Tasks 8,9 completed."
+  "last_run": "2026-04-30T12:41:00Z",
+  "last_tasks": [1, 4, 5, 8, 9],
+  "task_substitutions": "Tasks 1,8 selected. Task 1 done (side compiler rebuilt, GOTOOLCHAIN=local needed). Advanced to Task 4 (inline budget 80->85) and Task 5 (benchmark). Result: no significant improvement."
 }
