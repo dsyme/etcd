@@ -33,6 +33,11 @@ engine:
   id: copilot
   model: claude-opus-4.6
 
+sandbox:
+  mcp:
+    version: v0.3.3
+strict: false
+
 checkout:
   fetch: ["*"]
   fetch-depth: 0
