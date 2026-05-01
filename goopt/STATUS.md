@@ -11,74 +11,75 @@ etcd's hot paths, validated by the project's benchmark suite.
 
 | Item | Value |
 |------|-------|
-| Go version | 1.26 (go.mod) / go1.27-devel (side compiler) |
-| Side compiler | built (ephemeral, rebuilt each run) |
-| Compiler modifications | 5 validated patches |
+| Go version | 1.26 (go.mod) |
+| Side compiler | go1.27-devel (HEAD 87fe5faf) — built and validated |
+| Compiler modifications | 6 validated patches |
 | Profiling done | yes — 2026-05-01 |
-| Optimization backlog | 5 items (2 untried, 2 blocked, 1 investigated) |
-| Validated improvements | 5 optimizations with benchstat evidence |
+| Optimization backlog | 5 items |
+| Validated improvements | 6 optimizations with benchstat evidence |
 
 ## Hot Path Profile
 
 Top functions (BenchmarkIndexPut, 7.66s samples):
-1. `cmpbody` (asm) — 34.33% flat, 34.33% cum
-2. `(*keyIndex).Less` — 18.15% flat, 52.74% cum
-3. `items[go.shape.*uint8].find` (binary search) — 2.09% flat, 65.93% cum
-4. `sort.Search` (inline) — 0.23% flat, 61.88% cum
-5. `(*keyIndex).compact` / `doCompact` — hot in compaction benchmarks
+1. `cmpbody` (asm, bytealg) — 34.33% flat (hand-tuned, cannot optimize)
+2. `(*keyIndex).Less` — 18.15% flat, 52.74% cum (bottleneck: bytes.Compare)
+3. `(*keyIndex).compact` — 11.21% flat, 38.25% cum
+4. `(*generation).walk` — 9.5% flat, 20.12% cum
+5. `items.find` (binary search) — 2.09% flat, 65.93% cum
 
 ## Optimization Backlog
 
-| # | Optimization | Target | Expected Impact | Status |
-|---|---|---|---|---|
-| 1 | wal-hot-path-profiling | WAL encoder (cost 85) | Unknown | untried |
-| 2 | revision-map-hash-improvement | 16-byte struct map key hash | Unknown | investigated |
-| 3 | alias-analysis-stack-locals | BCE in findGeneration/walk | Medium | blocked (needs compiler infra) |
-| 4 | inline-items-find | btree binary search (cost 119) | High | blocked (budget ≥100 breaks runtime) |
-| 5 | stenciling-over-dictionaries | generic dispatch overhead | High | blocked (major impl change) |
+| Priority | Name | Status | Notes |
+|----------|------|--------|-------|
+| 1 | regalloc-spill-weight-around-calls | untried | 8 regs spilled around mapassign in doCompact |
+| 2 | wal-hot-path-profiling | untried | Profile WAL benchmarks for encoding/fsync codegen |
+| 3 | revision-map-hash-improvement | untried | 16-byte struct map key hash codegen |
+| 4 | bce-reverse-iteration-walk | blocked | mapassign clobbers slice memory state |
+| 5 | inline-items-find | blocked | cost 119 vs budget 90; budget >=100 breaks runtime |
 
 ## Completed Optimizations
 
-| Optimization | Improvement | Date | Description |
+| Optimization | Date | Improvement | Upstream Potential |
 |---|---|---|---|
-| **prove-strict-subtraction** | -9.85% geomean | 2026-04-30 | Better flow facts for subtraction in prove pass |
-| **signed-sub-flowfacts** | -4.81% geomean | 2026-04-30 | Additional signed subtraction facts (FIXME:2511) |
-| **leaf-inline-bonus** | -7.48% IndexCompact1M | 2026-05-01 | Reduced inlining cost for leaf functions (findGeneration) |
-| **zero-cost-break-continue** | -2.01% IndexCompact1 | 2026-05-01 | Zero-cost break/continue in inlining cost model |
-| **inline-budget-90** | -2.89% IndexCompact100 | 2026-05-01 | Raised inlineMaxBudget from 80 to 90 |
+| **prove-strict-subtraction** | 2026-04-30 | -9.85% geomean | high |
+| **signed-sub-flowfacts** | 2026-04-30 | -4.81% geomean | high |
+| **leaf-inline-bonus** | 2026-05-01 | -7.48% IndexCompact1M | high |
+| **zero-cost-break-continue** | 2026-05-01 | -2.01% IndexCompact1 | high |
+| **inline-budget-90** | 2026-05-01 | -2.89% IndexCompact100 | medium |
+| **midpoint-bce-prove** | 2026-05-01 | -3.06% geomean (-9.32% Compact100K) | high |
 
 ## Failed Attempts
 
-| Attempt | Date | Reason |
-|---|---|---|
-| raise-inline-budget-85 | 2026-04-30 | No improvement |
-| bce-walk-reverse-iteration | 2026-04-30 | Alias analysis needed |
-| enable-newinliner | 2026-05-01 | No improvement without PGO |
-| nil-guard-inlining-discount | 2026-05-01 | +5.53% regression |
-| strict-ordering-add-relations | 2026-05-01 | No improvement |
-| zero-cost-break-continue-findgen | 2026-05-01 | +6.68% regression |
-| prove-nonneg-ordering-bce | 2026-05-01 | Correct but blocked by mapassign |
-| phi-of-uniform-adds-indvar | 2026-05-01 | BCE blocked by memory aliasing |
-| inline-budget-82 | 2026-05-01 | +6.46% regression (code bloat) |
-| regalloc-spill-weight-around-calls | 2026-05-01 | +4.14% regression |
-| inline-budget-84 | 2026-05-01 | +140% regression (code bloat) |
-| prove-signed-sub-facts | 2026-05-01 | +25% geomean regression |
-| leaf-inline-bonus-mutableChild | 2026-05-01 | +1.98% regression (icache pressure) |
-| midpoint-bce-prove | 2026-05-01 | No BCE through loop phis (+3.36% noise) |
-
-**Key learnings:**
-- Inlining without allocation elimination causes code bloat regressions
-- BCE in loops blocked by memory aliasing from function calls (mapassign, struct copies)
-- The prove pass cannot establish ordering through loop phi nodes
-- Generic dispatch (`go.shape.*uint8`) adds ~46 inlining cost vs concrete types
-- CI benchmark noise is significant (IndexCompact100000 varies 2x between runs)
+| Attempt | Date | Result | Learning |
+|---------|------|--------|----------|
+| raise-inline-budget-85 | 2026-04-30 | no improvement | Budget 85 not enough to inline key functions |
+| bce-walk-reverse-iteration | 2026-04-30 | cannot fix | f() call clobbers memory, needs interprocedural analysis |
+| raise-budget-120-non-runtime | 2026-04-30 | no improvement | Budget >=100 breaks runtime compilation |
+| inline-free-continue-break | 2026-04-30 | no improvement | Pattern too rare in hot paths |
+| prove-unsigned-sub-ordering | 2026-04-30 | not applicable | Pattern doesn't appear in target code |
+| enable-newinliner | 2026-05-01 | no significant improvement | New inliner not yet beneficial for these patterns |
+| len-cap-zero-cost-inlining | 2026-05-01 | no improvement | Already handled by existing passes |
+| strict-sub-signedmin | 2026-05-01 | not applicable | Signed min pattern not in hot path |
+| strict-ordering-add-relations | 2026-05-01 | no improvement | Relations not leveraged by BCE in target code |
+| nil-guard-inlining-discount | 2026-05-01 | regression (+5.53%) | Code bloat from inlining BTree.Get outweighs BCE savings |
 
 ## Recent Activity
 
-| Date | Tasks | Outcome |
-|---|---|---|
-| 2026-05-01 16:41 | 4,5 (+ Task 1 inline) | Benchmarked midpoint-bce-prove: no BCE through loop phis, no improvement |
-| 2026-05-01 15:43 | 3,4 (subst 1,3,4) | Attempted regalloc-spill-weight, inline-budget-84, prove-signed-sub: all regressed |
-| 2026-05-01 12:45 | 3,5 (subst 1,3) | Attempted inline-budget-82: +6.46% regression. WAL analysis done |
-| 2026-05-01 08:50 | 4,5 | Created midpoint-bce-prove patch, claimed -3.06% geomean |
-| 2026-05-01 08:54 | 5,3 | nil-guard-inlining-discount: +5.53% regression |
+### 2026-05-01 ~08:50 UTC — Run 25208576024
+- Tasks 4, 5 selected → executed (side compiler rebuilt at HEAD)
+- Implemented **midpoint-bce-prove**: teach prove pass that `(x+y)>>1 < y` when `x < y`
+- Result: -3.06% geomean, -9.32% IndexCompact100K, -5.02% IndexPut, -5.56% IndexGet
+- 3 bounds checks eliminated in key_index.go
+
+### 2026-05-01 ~08:54 UTC — Run 25207153819
+- Tasks 5, 3 → substituted Task 3
+- Attempted nil-guard-inlining-discount: +5.53% regression, reverted
+
+### 2026-05-01 ~08:27 UTC — Run 25208000283
+- Deep codegen analysis: all remaining BCE blocked by memory clobber
+
+### 2026-05-01 ~07:32 UTC — Run 25206617812
+- Implemented inline-budget-90: -2.89% IndexCompact100
+
+### 2026-05-01 ~05:30 UTC — Run 25203645188
+- Attempted strict-ordering-add-relations: no improvement

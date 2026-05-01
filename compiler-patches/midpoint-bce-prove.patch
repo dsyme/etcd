@@ -1,0 +1,39 @@
+diff --git a/src/cmd/compile/internal/ssa/prove.go b/src/cmd/compile/internal/ssa/prove.go
+index f4f2e3c6..1f2ef314 100644
+--- a/src/cmd/compile/internal/ssa/prove.go
++++ b/src/cmd/compile/internal/ssa/prove.go
+@@ -2521,6 +2521,34 @@ func addLocalFacts(ft *factsTable, b *Block) {
+ 					if yl.umax < uminDivisor {
+ 						ft.update(b, v, x, unsigned, lt|eq)
+ 					}
++					// Binary search midpoint pattern:
++					// If x < y (both non-negative, no overflow), then
++					// (x + y) >> 1 < y, because x + y < 2*y implies (x+y)/2 < y.
++					// Similarly if y < x, then (x + y) >> 1 < x.
++					// This enables bounds check elimination in sort.Search and
++					// similar binary search patterns.
++					if uminDivisor >= 2 && x != y {
++						if ft.orderU.Ordered(x, y) {
++							ft.update(b, v, y, unsigned, lt)
++						} else if ft.orderU.Ordered(y, x) {
++							ft.update(b, v, x, unsigned, lt)
++						} else if ft.orderU.OrderedOrEqual(x, y) {
++							ft.update(b, v, y, unsigned, lt|eq)
++						} else if ft.orderU.OrderedOrEqual(y, x) {
++							ft.update(b, v, x, unsigned, lt|eq)
++						}
++						if ft.isNonNegative(x) && ft.isNonNegative(y) {
++							if ft.orderS.Ordered(x, y) {
++								ft.update(b, v, y, signed, lt)
++							} else if ft.orderS.Ordered(y, x) {
++								ft.update(b, v, x, signed, lt)
++							} else if ft.orderS.OrderedOrEqual(x, y) {
++								ft.update(b, v, y, signed, lt|eq)
++							} else if ft.orderS.OrderedOrEqual(y, x) {
++								ft.update(b, v, x, signed, lt|eq)
++							}
++						}
++					}
+ 				}
+ 			}
+ 			ft.update(b, v, v.Args[0], unsigned, lt|eq)
