@@ -6,164 +6,55 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-05-01T02:30:00Z",
-    "tests_passed": [
-      "server/storage/mvcc"
-    ],
+    "last_validated": "2026-05-01T05:30:00Z",
+    "tests_passed": ["server/storage/mvcc"],
     "note": "Must use GOTOOLCHAIN=local due to go.mod toolchain directive"
   },
   "hot_paths": [
-    {
-      "func": "(*keyIndex).compact",
-      "flat_pct": 11.21,
-      "cum_pct": 38.25,
-      "pkg": "mvcc"
-    },
-    {
-      "func": "(*generation).walk",
-      "flat_pct": 9.5,
-      "cum_pct": 20.12,
-      "pkg": "mvcc"
-    },
-    {
-      "func": "(*keyIndex).Less",
-      "flat_pct": 7.72,
-      "cum_pct": 20.71,
-      "pkg": "mvcc"
-    }
+    {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
+    {"func": "(*generation).walk", "flat_pct": 9.5, "cum_pct": 20.12, "pkg": "mvcc"},
+    {"func": "(*keyIndex).Less", "flat_pct": 7.72, "cum_pct": 20.71, "pkg": "mvcc"}
   ],
   "profiling": {
     "date": "2026-04-30T17:40:00Z",
-    "benchmarks_profiled": [
-      "mvcc BenchmarkIndex*"
-    ],
+    "benchmarks_profiled": ["mvcc BenchmarkIndex*"],
     "mvcc_total_samples": "79.06s"
   },
   "optimization_backlog": [
-    {
-      "priority": 5,
-      "name": "ssa-phielim-compact-loop",
-      "status": "untried",
-      "note": "Phi elimination in compact loop - hard due to closure aliasing in walk()"
-    },
-    {
-      "priority": 6,
-      "name": "strength-reduction-revision-compare",
-      "status": "untried"
-    }
+    {"priority": 5, "name": "ssa-phielim-compact-loop", "status": "blocked", "note": "Requires alias analysis to prove slice not modified by mapassign; not feasible with current compiler architecture"},
+    {"priority": 6, "name": "strength-reduction-revision-compare", "status": "not_applicable", "note": "Leq64 already optimal single instruction"}
   ],
   "attempt_log": [
-    {
-      "date": "2026-04-30",
-      "name": "raise-inline-budget-85",
-      "result": "no_improvement"
-    },
-    {
-      "date": "2026-04-30",
-      "name": "bce-walk-reverse-iteration",
-      "result": "cannot_fix"
-    },
-    {
-      "date": "2026-04-30",
-      "name": "raise-budget-120-non-runtime",
-      "result": "no_improvement"
-    },
-    {
-      "date": "2026-04-30",
-      "name": "prove-strict-subtraction",
-      "result": "validated",
-      "detail": "-9.85% geomean"
-    },
-    {
-      "date": "2026-04-30",
-      "name": "inline-free-continue-break",
-      "result": "no_improvement"
-    },
-    {
-      "date": "2026-04-30",
-      "name": "signed-sub-flowfacts",
-      "result": "validated",
-      "detail": "-4.81% geomean"
-    },
-    {
-      "date": "2026-04-30",
-      "name": "len-cap-zero-cost-inlining",
-      "result": "no_improvement"
-    },
-    {
-      "date": "2026-04-30",
-      "name": "prove-unsigned-sub-ordering",
-      "result": "not_applicable"
-    },
-    {
-      "date": "2026-05-01",
-      "name": "enable-newinliner",
-      "result": "no_significant_improvement"
-    },
-    {
-      "date": "2026-05-01",
-      "name": "leaf-inline-bonus",
-      "result": "validated",
-      "detail": "-7.48% IndexCompact1M (p=0.000), -3.00% IndexPut (p=0.014)"
-    },
-    {
-      "date": "2026-05-01",
-      "name": "zero-cost-break-continue",
-      "result": "validated",
-      "detail": "-2.01% IndexCompact1 (p=0.015)"
-    },
-    {
-      "date": "2026-06-10",
-      "name": "strict-sub-signedmin",
-      "result": "not_applicable",
-      "detail": "Eliminates BCE for local-slice reverse iteration (s[len(s)-i-1]), but etcd walk() uses struct field slice which prevents the optimization from applying."
-    }
+    {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "bce-walk-reverse-iteration", "result": "cannot_fix"},
+    {"date": "2026-04-30", "name": "raise-budget-120-non-runtime", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean"},
+    {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"},
+    {"date": "2026-04-30", "name": "len-cap-zero-cost-inlining", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "prove-unsigned-sub-ordering", "result": "not_applicable"},
+    {"date": "2026-05-01", "name": "enable-newinliner", "result": "no_significant_improvement"},
+    {"date": "2026-05-01", "name": "leaf-inline-bonus", "result": "validated", "detail": "-7.48% IndexCompact1M (p=0.000), -3.00% IndexPut (p=0.014)"},
+    {"date": "2026-05-01", "name": "zero-cost-break-continue", "result": "validated", "detail": "-2.01% IndexCompact1 (p=0.015)"},
+    {"date": "2026-06-10", "name": "strict-sub-signedmin", "result": "not_applicable", "detail": "BCE for reverse iteration blocked by struct field slice"},
+    {"date": "2026-05-01", "name": "strict-ordering-add-relations", "result": "no_improvement", "detail": "Enabled strict min in detectSubRelations + added detectAddRelations. No significant benchmark improvement (-0.31% geomean, p>0.3). Core issue: walk() BCE blocked by mapassign clobbering memory, requiring alias analysis."}
   ],
   "successful_optimizations": [
-    {
-      "name": "prove-strict-subtraction",
-      "date": "2026-04-30",
-      "improvement": "-9.85% geomean",
-      "pr_branch": "goopt/prove-strict-subtraction",
-      "upstream_potential": "high"
-    },
-    {
-      "name": "signed-sub-flowfacts",
-      "date": "2026-04-30",
-      "improvement": "-4.81% geomean",
-      "pr_branch": "goopt/signed-sub-flowfacts",
-      "upstream_potential": "high"
-    },
-    {
-      "name": "leaf-inline-bonus",
-      "date": "2026-05-01",
-      "improvement": "-7.48% IndexCompact1M",
-      "pr_branch": "goopt/leaf-inline-bonus",
-      "upstream_potential": "high"
-    },
-    {
-      "name": "zero-cost-break-continue",
-      "date": "2026-05-01",
-      "improvement": "-2.01% IndexCompact1",
-      "pr_branch": "goopt/zero-cost-break-continue",
-      "upstream_potential": "high"
-    }
+    {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
+    {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"},
+    {"name": "leaf-inline-bonus", "date": "2026-05-01", "improvement": "-7.48% IndexCompact1M", "pr_branch": "goopt/leaf-inline-bonus", "upstream_potential": "high"},
+    {"name": "zero-cost-break-continue", "date": "2026-05-01", "improvement": "-2.01% IndexCompact1", "pr_branch": "goopt/zero-cost-break-continue", "upstream_potential": "high"}
   ],
   "benchmark_baselines": {
     "date": "2026-05-01",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "139.4 ns/op",
-      "BenchmarkIndexPut": "2.302 us/op",
-      "BenchmarkIndexGet": "1.932 us/op"
+      "BenchmarkIndexCompact1": "129.6 ns/op",
+      "BenchmarkIndexPut": "2.091 us/op",
+      "BenchmarkIndexGet": "1.778 us/op"
     }
   },
-  "last_run": "2026-06-10T12:00:00Z",
-  "last_tasks": [
-    4,
-    5,
-    8,
-    9
-  ],
-  "task_substitutions": "Tasks 4,5 selected. Attempted strict-sub-signedmin (BCE for reverse iteration). Optimization correct but does not help etcd: walk() uses struct field slice which defeats BCE."
+  "last_run": "2026-05-01T05:30:00Z",
+  "last_tasks": [4, 5, 8, 9],
+  "task_substitutions": "Tasks 4,5 selected. Attempted strict-ordering-add-relations (enable strict min in detectSubRelations + detectAddRelations for prove pass). Sound optimization but no significant benchmark impact. Root cause: walk() BCE blocked by mapassign clobbering slice load memory state, requiring alias analysis the Go compiler lacks."
 }
