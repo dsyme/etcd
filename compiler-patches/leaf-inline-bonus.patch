@@ -1,0 +1,79 @@
+diff --git a/src/cmd/compile/internal/inline/inl.go b/src/cmd/compile/internal/inline/inl.go
+index 4fa9cf0..bf168f1 100644
+--- a/src/cmd/compile/internal/inline/inl.go
++++ b/src/cmd/compile/internal/inline/inl.go
+@@ -305,6 +305,7 @@ func CanInline(fn *ir.Func, profile *pgoir.Profile) {
+ 		Dcl:             pruneUnusedAutos(n.Func.Dcl, &visitor),
+ 		HaveDcl:         true,
+ 		CanDelayResults: canDelayResults(fn),
++		IsLeaf:          !visitor.hasCall,
+ 	}
+ 	if base.Flag.LowerM != 0 || logopt.Enabled() {
+ 		noteInlinableFunc(n, fn, budget-visitor.budget)
+@@ -441,8 +442,11 @@ type hairyVisitor struct {
+ 	usedLocals    ir.NameSet
+ 	do            func(ir.Node) bool
+ 	profile       *pgoir.Profile
++	hasCall       bool // tracks whether any non-cheap calls were encountered
+ }
+ 
++const inlineLeafBonus = 8 // extra budget for leaf functions (no non-cheap calls)
++
+ func isDebugFn(fn *ir.Func) bool {
+ 	// if n := fn.Nname; n != nil {
+ 	// 	if n.Sym().Name == "Int32x8.Transpose8" && n.Sym().Pkg.Path == "simd/archsimd" {
+@@ -459,6 +463,11 @@ func (v *hairyVisitor) tooHairy(fn *ir.Func) bool {
+ 		return true
+ 	}
+ 	if v.budget < 0 {
++		// Leaf functions (no non-cheap calls) get a bonus budget allowance,
++		// since they have no call overhead and are good inlining candidates.
++		if !v.hasCall && v.budget >= -inlineLeafBonus {
++			return false
++		}
+ 		v.reason = fmt.Sprintf("function too complex: cost %d exceeds budget %d", v.maxBudget-v.budget, v.maxBudget)
+ 		return true
+ 	}
+@@ -639,6 +648,7 @@ opSwitch:
+ 
+ 		// Call cost for non-leaf inlining.
+ 		v.budget -= extraCost
++		v.hasCall = true
+ 
+ 	case ir.OCALLMETH:
+ 		base.FatalfAt(n.Pos(), "OCALLMETH missed by typecheck")
+@@ -650,6 +660,7 @@ opSwitch:
+ 			fmt.Printf("%v: costly OCALL %v\n", ir.Line(n), n)
+ 		}
+ 		v.budget -= v.extraCallCost
++		v.hasCall = true
+ 
+ 	case ir.OPANIC:
+ 		n := n.(*ir.UnaryExpr)
+@@ -971,6 +982,12 @@ func inlineCostOK(n *ir.CallExpr, caller, callee *ir.Func, bigCaller, closureCal
+ 		maxCost = inlineBigFunctionMaxCost
+ 	}
+ 
++	// Leaf functions (no calls) get extra budget since they have no
++	// call overhead and are predictable inlining targets.
++	if !bigCaller && callee.Inl.IsLeaf {
++		maxCost += inlineLeafBonus
++	}
++
+ 	simdMaxCost := simdCreditMultiplier(callee) * maxCost
+ 
+ 	if callee.ClosureParent != nil {
+diff --git a/src/cmd/compile/internal/ir/func.go b/src/cmd/compile/internal/ir/func.go
+index e027fe8..918d4b0 100644
+--- a/src/cmd/compile/internal/ir/func.go
++++ b/src/cmd/compile/internal/ir/func.go
+@@ -220,6 +220,9 @@ type Inline struct {
+ 	// initializing the result parameters until immediately before the
+ 	// "return" statement.
+ 	CanDelayResults bool
++
++	// IsLeaf indicates the function contains no non-cheap calls.
++	IsLeaf bool
+ }
+ 
+ // A Mark represents a scope boundary.
