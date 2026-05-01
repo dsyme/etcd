@@ -1,0 +1,13 @@
+diff --git a/src/cmd/compile/internal/inline/inl.go b/src/cmd/compile/internal/inline/inl.go
+index 4fa9cf0..1fe2063 100644
+--- a/src/cmd/compile/internal/inline/inl.go
++++ b/src/cmd/compile/internal/inline/inl.go
+@@ -712,7 +712,7 @@ opSwitch:
+ 		// This doesn't produce code, but the children might.
+ 		v.budget++ // undo default cost
+ 
+-	case ir.OFALL, ir.OTYPE:
++	case ir.OFALL, ir.OTYPE, ir.OBREAK, ir.OCONTINUE:
+ 		// These nodes don't produce code; omit from inlining budget.
+ 		return false
+ 
