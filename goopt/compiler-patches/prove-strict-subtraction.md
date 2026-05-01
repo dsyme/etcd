@@ -48,9 +48,57 @@ geomean                 74.00µ       66.71µ        -9.85%
 - **Code size**: No change — only eliminates instructions (bounds checks)
 - **Risk**: Low — the TODO comments in upstream Go indicate these were intentionally left as future work
 
+## Upstream Status (checked 2026-05-01 against golang/go master)
+
+**This optimization has ALREADY been implemented upstream.** The Go team independently
+removed the TODO guards and enabled both strict subtraction facts. The current
+`detectSubRelations` at HEAD reads:
+
+```go
+// Signed optimizations
+if _, ok := safeSub(xLim.min, yLim.max, width); ok {
+    if _, ok := safeSub(xLim.max, yLim.min, width); ok {
+        // x-y won't overflow
+        if yLim.min > 0 {
+            ft.update(v.Block, v, x, signed, lt)        // ← was commented out
+        } else if yLim.min == 0 {
+            ft.update(v.Block, v, x, signed, lt|eq)
+        }
+        if ft.orderS.Ordered(y, x) {
+            ft.signedMin(v, 1)                          // ← was commented out
+            vSignedMinOne = true
+        } else if ft.orderS.OrderedOrEqual(y, x) {
+            ft.setNonNegative(v)
+        }
+    }
+}
+```
+
+The upstream version is **more complete** than this patch:
+- Adds explicit overflow guards (`safeSub`) before propagating any facts
+- Tracks `vSignedMinOne` to avoid redundant unsigned work
+- Handles negative operands correctly by gating on overflow checks
+- Also adds unsigned-domain facts (`ft.update(v.Block, v, x, unsigned, lt)` and
+  `ft.unsignedMin(v, 1)`)
+
+### When did this land?
+
+The `detectSubRelations` function with these facts enabled appears in Go 1.23+
+(the function was substantially rewritten between Go 1.22 and 1.23). Since etcd
+currently uses Go 1.26, **this patch is redundant** — the stock Go 1.26 compiler
+already includes these optimizations.
+
+### Action
+
+This patch can be **retired**. The benchstat gains shown above should already be
+present with the stock Go 1.26 compiler. If they are not, it may indicate the
+patch was applied to an older `detectSubRelations` that predates the upstream
+rewrite (i.e., the baseline was measured against a side compiler built from an
+older snapshot).
+
 ## Upstream Potential
 
-High. This is a conservative, correct improvement that was already considered by the Go team (evidenced by the commented-out code with "TODO: is this worth it?" annotations). The etcd benchmark results demonstrate it is indeed worth it for real-world workloads.
+N/A — already upstream.
 
 ## Reproduction
 

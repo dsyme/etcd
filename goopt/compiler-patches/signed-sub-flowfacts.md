@@ -47,6 +47,44 @@ geomean                  64.03µ       60.95µ       -4.81%
 - **Code size**: No change (only affects prove pass decisions, not code generation directly)
 - **Risk**: Low — the derived facts are mathematically correct for non-negative operands
 
+## Upstream Status (checked 2026-05-01 against golang/go master)
+
+**The FIXME comment is still present in `addLocalFacts`** — the exact line this patch
+modifies has NOT been upstreamed:
+
+```go
+// FIXME: we could also do signed facts but the overflow checks are much trickier and I don't need it yet.
+```
+
+However, there is **partial overlap** with the existing `detectSubRelations` function
+(called from `flowLimit` for subtraction ops), which was added/expanded upstream and
+now derives signed relational facts via a different code path:
+
+| Fact | This Patch (addLocalFacts) | Upstream (detectSubRelations) | Status |
+|------|---------------------------|-------------------------------|--------|
+| `v <= x` when both non-negative | `ft.update(b, v, v.Args[0], signed, lt\|eq)` | `if yLim.min == 0 { ft.update(v.Block, v, x, signed, lt\|eq) }` | **Already covered upstream** (with stricter overflow guards via `safeSub`) |
+| `v >= y` when `x.min >= y.max` | `ft.update(b, v, v.Args[1], signed, gt\|eq)` | No equivalent | **Not upstream — and potentially unsound** |
+
+### Soundness concern with the second fact
+
+The patch comment says "If x.min >= y.max, then v = x - y >= 0" but the code asserts
+`v >= y` (i.e., `x - y >= y`, requiring `x >= 2y`). This is **not always true**:
+
+- Counterexample: x ∈ [5,5], y ∈ [3,3]. x.min=5 >= y.max=3, but v = 5-3 = 2 < y = 3.
+
+The correct fact given `x.min >= y.max` and both non-negative is `v >= 0` (i.e.,
+`ft.setNonNegative(v)`), NOT `v >= y`. The benchmark improvements are real because
+etcd's specific hot-path patterns likely satisfy the stronger condition, but this
+would be **rejected upstream** due to the unsound general case.
+
+### Recommendation
+
+1. The first fact (`v <= x`) is redundant with upstream — remove or keep only as a
+   faster path (it fires earlier in `addLocalFacts` vs. later in `flowLimit`).
+2. The second fact should be corrected to `ft.setNonNegative(v)` (which IS sound
+   given `x.min >= y.max >= 0`), or strengthened to check `x.min >= 2*y.max` if the
+   `v >= y` relation is specifically needed.
+
 ## Upstream Potential
 
-High. This addresses a documented FIXME in the Go compiler source and provides general benefit for any code performing arithmetic on non-negative integers (array indexing, length calculations, etc.).
+Medium (after correction). The first fact is already handled upstream. The second fact addresses a real gap but requires a soundness fix before it could be proposed.
