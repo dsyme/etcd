@@ -10,7 +10,7 @@
   ],
   "backlog": [
     {"name": "regalloc-spill-weight-around-calls", "priority": 3, "status": "untried"},
-    {"name": "wal-hot-path-profiling", "priority": 4, "status": "untried"},
+    {"name": "wal-hot-path-profiling", "priority": 4, "status": "untried", "note": "newEncoder cost 85 (3 over budget)"},
     {"name": "revision-map-hash-improvement", "priority": 5, "status": "investigated"},
     {"name": "alias-analysis-stack-locals", "priority": 6, "status": "blocked", "note": "needed for BCE in findGeneration"},
     {"name": "inline-items-find", "priority": 7, "status": "blocked"}
@@ -23,15 +23,15 @@
     {"name": "strict-ordering-add-relations", "date": "2026-05-01", "reason": "no improvement"},
     {"name": "zero-cost-break-continue-findgen", "date": "2026-05-01", "reason": "+6.68% regression"},
     {"name": "prove-nonneg-ordering-bce", "date": "2026-05-01", "reason": "correct but blocked by mapassign"},
-    {"name": "phi-of-uniform-adds-indvar", "date": "2026-05-01", "reason": "correctly detects indvar but BCE blocked by memory aliasing (Move to local clobbers slice facts)"}
+    {"name": "phi-of-uniform-adds-indvar", "date": "2026-05-01", "reason": "BCE blocked by memory aliasing"},
+    {"name": "inline-budget-82", "date": "2026-05-01", "reason": "+6.46% regression, code bloat without alloc elimination"}
   ],
-  "last_run": {"date": "2026-05-01T11:24:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,4,8,9], "workflow_run_id": 25212563959},
+  "last_run": {"date": "2026-05-01T12:45:00Z", "tasks_selected": [3,5,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25214692914},
   "key_findings": [
-    "findGeneration indvar now detectable with phi-of-uniform-adds extension to parseIndVar",
-    "BCE in findGeneration blocked by Move(generation→local) clobbering memory state",
+    "inline-budget-82 inlines BTree.Get and findGeneration but REGRESSES due to code bloat",
+    "keyi allocation in unsafeGet escapes because node.get (cost 167) can't be inlined",
     "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
-    "prove pass ordering deductions blocked by overflow guards with wide limits",
-    "mapassign in doCompact closure prevents fact propagation across call",
+    "WAL newEncoder costs 85 - potential target for WAL-specific optimization",
     "Alias analysis for stack locals would unlock remaining BCE opportunities"
   ]
 }
