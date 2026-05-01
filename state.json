@@ -4,18 +4,18 @@
   "side_compiler": {
     "status": "built_and_validated",
     "path": "/tmp/goopt/go",
-    "version": "go1.26.0",
-    "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-05-01T07:50:00Z",
-    "tests_passed": ["server/storage/mvcc"],
-    "note": "Must use GOTOOLCHAIN=local and GOCACHE=/tmp/goopt/cache to avoid stale cache"
+    "version": "go-master-87fe5faf",
+    "source": "go.googlesource.com/go HEAD master",
+    "last_validated": "2026-05-01T08:30:00Z",
+    "tests_passed": ["build"],
+    "note": "Rebuilt at latest HEAD 87fe5faf (cmd/compile: use GOEXPERIMENT from environment for generic methods)"
   },
   "hot_paths": [
-    {"func": "items.find (binary search)", "flat_pct": 2.09, "cum_pct": 65.93, "pkg": "btree", "note": "cost 119, not inlineable at budget 90"},
-    {"func": "(*keyIndex).Less", "flat_pct": 18.15, "cum_pct": 52.74, "pkg": "mvcc"},
+    {"func": "cmpbody (asm)", "flat_pct": 34.33, "cum_pct": 34.33, "pkg": "bytealg", "note": "Hand-tuned asm, cannot optimize at compiler level"},
+    {"func": "(*keyIndex).Less", "flat_pct": 18.15, "cum_pct": 52.74, "pkg": "mvcc", "note": "Inlineable (cost 71), bottleneck is bytes.Compare asm"},
     {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
-    {"func": "(*generation).walk", "flat_pct": 9.5, "cum_pct": 20.12, "pkg": "mvcc"},
-    {"func": "cmpbody (asm)", "flat_pct": 34.33, "cum_pct": 34.33, "pkg": "bytealg"}
+    {"func": "(*generation).walk", "flat_pct": 9.5, "cum_pct": 20.12, "pkg": "mvcc", "note": "BCE blocked by f() clobbering memory"},
+    {"func": "items.find (binary search)", "flat_pct": 2.09, "cum_pct": 65.93, "pkg": "btree", "note": "cost 119, not inlineable. BCE in loop blocked by indirect call"}
   ],
   "profiling": {
     "date": "2026-05-01T07:43:00Z",
@@ -23,9 +23,11 @@
     "note": "Put dominated by btree binary search (65%) and bytes.Compare (35%)"
   },
   "optimization_backlog": [
-    {"priority": 1, "name": "inline-items-find", "status": "blocked", "note": "cost 119 vs budget 90. Budget >=120 breaks runtime build. Needs targeted non-runtime budget or new-inliner scoring fix"},
-    {"priority": 2, "name": "devirtualize-less-in-find", "status": "blocked", "note": "Requires items.find inlining first to expose concrete less function"},
-    {"priority": 3, "name": "bce-reverse-iteration-walk", "status": "blocked", "note": "mapassign clobbers slice memory state; needs alias analysis"}
+    {"priority": 1, "name": "inline-items-find", "status": "blocked", "note": "cost 119 vs budget 80. Needs targeted budget increase or sort.Search cost reduction"},
+    {"priority": 2, "name": "bce-sort-search-midpoint", "status": "blocked", "note": "Binary search midpoint BCE needs loop invariant j<=len(s) tracking through Phi nodes. Non-trivial."},
+    {"priority": 3, "name": "bce-generation-walk-reverse", "status": "blocked", "note": "f() call clobbers memory, compiler reloads len(g.revs). Needs interprocedural analysis."},
+    {"priority": 4, "name": "devirtualize-less-in-find", "status": "blocked", "note": "less is a func value param, not interface. Current devirt only handles OCALLINTER."},
+    {"priority": 5, "name": "bce-key-index-remaining", "status": "analysis_done", "note": "17 remaining BCE in key_index.go. Most blocked by function calls or non-trivial patterns."}
   ],
   "attempt_log": [
     {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement"},
@@ -41,7 +43,8 @@
     {"date": "2026-05-01", "name": "zero-cost-break-continue", "result": "validated", "detail": "-2.01% IndexCompact1 (p=0.015)"},
     {"date": "2026-05-01", "name": "strict-sub-signedmin", "result": "not_applicable"},
     {"date": "2026-05-01", "name": "strict-ordering-add-relations", "result": "no_improvement"},
-    {"date": "2026-05-01", "name": "inline-budget-90", "result": "validated", "detail": "-2.89% IndexCompact100 (p=0.019), -1.35% geomean. Inlines findGeneration and BTree.Get."}
+    {"date": "2026-05-01", "name": "inline-budget-90", "result": "validated", "detail": "-2.89% IndexCompact100 (p=0.019), -1.35% geomean. Inlines findGeneration and BTree.Get."},
+    {"date": "2026-05-01", "name": "deep-analysis-codegen-opportunities", "result": "analysis_only", "detail": "All remaining BCE blocked by function calls clobbering memory or non-trivial loop invariants. Hot path dominated by asm bytealg.Compare (34%). No new implementable optimization found this run."}
   ],
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
@@ -60,7 +63,7 @@
       "BenchmarkIndexGet": "1.715 us/op"
     }
   },
-  "last_run": "2026-05-01T07:32:00Z",
-  "last_tasks": [1, 4, 5, 8, 9],
-  "task_substitutions": "Tasks 1,4 selected. Task 1 completed (side compiler rebuilt). Task 4: implemented inline-budget-90 optimization. Task 5 triggered by validated result."
+  "last_run": "2026-05-01T08:27:00Z",
+  "last_tasks": [3, 8, 9],
+  "task_substitutions": "Tasks 3,4 selected. Task 4 substituted by Task 3 (all backlog items blocked, deep codegen analysis performed). No new implementable optimization found."
 }
