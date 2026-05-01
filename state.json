@@ -32,7 +32,7 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression, icache pressure"}
   ],
-  "last_run": {"date": "2026-05-01T22:37:00Z", "tasks_selected": [5,4,8], "tasks_executed": [8,9], "workflow_run_id": 25236105168, "notes": "Frontier exhausted. All backlog items blocked. Status-only update."},
+  "last_run": {"date": "2026-05-01T23:38:00Z", "tasks_selected": [3,5,8], "tasks_executed": [8,9], "workflow_run_id": 25237815827, "notes": "Frontier exhausted. All backlog items blocked. Status-only update."},
   "key_findings": [
     "WAL encoder.encode 49.7% cum - blocked by DEFER (cannot inline)",
     "WAL write() dominated by syscall (17.6% flat) and time.Now (14.8% flat)",
