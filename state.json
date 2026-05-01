@@ -1,5 +1,5 @@
 {
-  "go_version": {"commit": "cb39d7aa", "date": "2026-05-01", "version": "go1.27-devel"},
+  "go_version": {"commit": "0af7dbf1", "date": "2026-05-01", "version": "go1.27-devel"},
   "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-01"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
@@ -9,10 +9,10 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "revision-map-hash-improvement", "priority": 4, "status": "investigated", "note": "Revision is 16-byte struct (2x int64), Go already uses efficient memhash. No SSA opportunity."},
-    {"name": "sort-search-closure-devirt", "priority": 5, "status": "untried", "note": "items.find uses sort.Search with closure; devirtualizing could eliminate indirect call overhead in btree binary search"},
-    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "needed for BCE in findGeneration/walk"},
-    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "shape version costs 119, concrete costs 73 but isn't used"},
+    {"name": "sort-search-closure-devirt", "priority": 5, "status": "untried", "note": "Complex: requires interprocedural devirtualization of sort.Interface calls"},
+    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Required for BCE in dedupe/walk/range - major compiler infrastructure change"},
+    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90; budget >=100 breaks runtime"},
+    {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "make→store→load breaks SSA len tracking for BCE in txn/range.go"},
     {"name": "stenciling-over-dictionaries", "priority": 7, "status": "investigated", "note": "would need major generics impl change"}
   ],
   "failed_attempts": [
@@ -32,17 +32,15 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression, icache pressure"}
   ],
-  "last_run": {"date": "2026-05-01T20:36:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25232000942, "notes": "Task 4 skipped - frontier exhausted, no viable untried optimization. Task 3 confirmed remaining backlog items blocked or low-ROI."},
+  "last_run": {"date": "2026-05-01T21:40:00Z", "tasks_selected": [4,3,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25234286990, "notes": "Explored backend/txn packages. All BCE blocked by aliasing. Frontier confirmed exhausted across all packages."},
   "key_findings": [
     "WAL encoder.encode 49.7% cum - blocked by DEFER (cannot inline)",
     "WAL write() dominated by syscall (17.6% flat) and time.Now (14.8% flat)",
-    "WAL BCE at encoder.go:124 requires interprocedural analysis (param slice)",
     "mvcc: cmpbody 35% flat (asm), runtime.mapassign 43% - not compiler-optimizable",
     "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
-    "Optimization frontier largely exhausted for mvcc and WAL at SSA level",
-    "BTree.Get costs 81 (budget 80) - pushed over by 57-cost call to non-inlineable node.get (cost 167)",
-    "findGeneration costs 81 (budget 80) - would need zero-cost-break-continue patch (already validated)",
-    "Revision map hashing already efficient (16-byte memhash on 2x int64 struct)",
-    "sort.Search closure in items.find is potential devirt target but complex to implement"
+    "backend tx_buffer.go: 20+ BCE in dedupe/merge/range blocked by struct field aliasing",
+    "txn range.go: BCE blocked by make->store->load breaking SSA len chain",
+    "Optimization frontier largely exhausted for all target packages at SSA level",
+    "Remaining opportunities require interprocedural analysis or major infrastructure"
   ]
 }
