@@ -9,11 +9,11 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "wal-hot-path-profiling", "priority": 1, "status": "untried"},
-    {"name": "revision-map-hash-improvement", "priority": 2, "status": "investigated"},
-    {"name": "regalloc-spill-weight-around-calls", "priority": 3, "status": "investigated-low-impact"},
-    {"name": "slice-noshrink-bce", "priority": 6, "status": "blocked"},
-    {"name": "ssa-phielim-compact-loop", "priority": 7, "status": "blocked"}
+    {"name": "regalloc-spill-weight-around-calls", "priority": 3, "status": "untried"},
+    {"name": "wal-hot-path-profiling", "priority": 4, "status": "untried"},
+    {"name": "revision-map-hash-improvement", "priority": 5, "status": "investigated"},
+    {"name": "alias-analysis-stack-locals", "priority": 6, "status": "blocked", "note": "needed for BCE in findGeneration"},
+    {"name": "inline-items-find", "priority": 7, "status": "blocked"}
   ],
   "failed_attempts": [
     {"name": "raise-inline-budget-85", "date": "2026-04-30", "reason": "no improvement"},
@@ -22,15 +22,16 @@
     {"name": "nil-guard-inlining-discount", "date": "2026-05-01", "reason": "+5.53% regression"},
     {"name": "strict-ordering-add-relations", "date": "2026-05-01", "reason": "no improvement"},
     {"name": "zero-cost-break-continue-findgen", "date": "2026-05-01", "reason": "+6.68% regression"},
-    {"name": "prove-nonneg-ordering-bce", "date": "2026-05-01", "reason": "correct but blocked by mapassign"}
+    {"name": "prove-nonneg-ordering-bce", "date": "2026-05-01", "reason": "correct but blocked by mapassign"},
+    {"name": "phi-of-uniform-adds-indvar", "date": "2026-05-01", "reason": "correctly detects indvar but BCE blocked by memory aliasing (Move to local clobbers slice facts)"}
   ],
-  "last_run": {"date": "2026-05-01T11:45:00Z", "tasks_selected": [5,4,8], "tasks_executed": [1,8,9], "workflow_run_id": 25213097255},
+  "last_run": {"date": "2026-05-01T11:24:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,4,8,9], "workflow_run_id": 25212563959},
   "key_findings": [
-    "IndexPut dominated by cmpbody (31% flat) - irreducible memory comparison",
-    "Generic shape instantiation prevents items.find inlining (cost 119 > 80)",
-    "IndexCompact allocation-bound: mallocgc 40%, GC 29%, makemap_small 20%",
-    "All remaining mvcc BCE blocked by function calls clobbering memory state",
-    "regalloc-spill-weight unlikely to help allocation-dominated workloads",
-    "Next focus: WAL/backend benchmarks may have more compiler-optimizable patterns"
+    "findGeneration indvar now detectable with phi-of-uniform-adds extension to parseIndVar",
+    "BCE in findGeneration blocked by Move(generation→local) clobbering memory state",
+    "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
+    "prove pass ordering deductions blocked by overflow guards with wide limits",
+    "mapassign in doCompact closure prevents fact propagation across call",
+    "Alias analysis for stack locals would unlock remaining BCE opportunities"
   ]
 }
