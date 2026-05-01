@@ -1,63 +1,34 @@
 {
-  "go_version": "1.26",
-  "system_go": "1.26.2",
-  "side_compiler": {
-    "status": "built_and_validated",
-    "path": "/tmp/goopt/go",
-    "version": "go-master-87fe5faf",
-    "source": "go.googlesource.com/go HEAD master",
-    "last_validated": "2026-05-01T08:50:00Z",
-    "tests_passed": ["build", "mvcc"],
-    "note": "Rebuilt at latest HEAD 87fe5faf with midpoint-bce-prove patch applied"
-  },
-  "hot_paths": [
-    {"func": "cmpbody (asm)", "flat_pct": 34.33, "cum_pct": 34.33, "pkg": "bytealg", "note": "Hand-tuned asm, cannot optimize at compiler level"},
-    {"func": "(*keyIndex).Less", "flat_pct": 18.15, "cum_pct": 52.74, "pkg": "mvcc", "note": "Inlineable (cost 71), bottleneck is bytes.Compare asm"},
-    {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
-    {"func": "(*generation).walk", "flat_pct": 9.5, "cum_pct": 20.12, "pkg": "mvcc", "note": "BCE blocked by f() clobbering memory"},
-    {"func": "items.find (binary search)", "flat_pct": 2.09, "cum_pct": 65.93, "pkg": "btree", "note": "cost 119, not inlineable. 3 BCE eliminated by midpoint-bce-prove"}
-  ],
-  "profiling": {
-    "date": "2026-05-01T07:43:00Z",
-    "benchmarks_profiled": ["mvcc BenchmarkIndexPut"],
-    "note": "Put dominated by btree binary search (65%) and bytes.Compare (35%)"
-  },
-  "optimization_backlog": [
-    {"priority": 1, "name": "regalloc-spill-weight-around-calls", "status": "untried", "note": "8 regs spilled around mapassign in doCompact"},
-    {"priority": 2, "name": "wal-hot-path-profiling", "status": "untried", "note": "Profile WAL benchmarks for encoding/fsync codegen"},
-    {"priority": 3, "name": "revision-map-hash-improvement", "status": "untried", "note": "16-byte struct map key hash codegen"},
-    {"priority": 4, "name": "bce-reverse-iteration-walk", "status": "blocked", "note": "mapassign clobbers slice memory state"},
-    {"priority": 5, "name": "inline-items-find", "status": "blocked", "note": "cost 119 vs budget 90; budget >=100 breaks runtime"}
-  ],
-  "attempt_log": [
-    {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean"},
-    {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"},
-    {"date": "2026-05-01", "name": "leaf-inline-bonus", "result": "validated", "detail": "-7.48% IndexCompact1M"},
-    {"date": "2026-05-01", "name": "zero-cost-break-continue", "result": "validated", "detail": "-2.01% IndexCompact1"},
-    {"date": "2026-05-01", "name": "inline-budget-90", "result": "validated", "detail": "-2.89% IndexCompact100"},
-    {"date": "2026-05-01", "name": "midpoint-bce-prove", "result": "validated", "detail": "-3.06% geomean (-9.32% Compact100K, -5.56% Get, -5.02% Put). 3 BCE eliminated in key_index.go."}
-  ],
+  "go_version": {"commit": "87fe5faf", "date": "2026-05-01", "version": "go1.27-devel"},
+  "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-01"},
   "successful_optimizations": [
-    {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
-    {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"},
-    {"name": "leaf-inline-bonus", "date": "2026-05-01", "improvement": "-7.48% IndexCompact1M", "pr_branch": "goopt/leaf-inline-bonus", "upstream_potential": "high"},
-    {"name": "zero-cost-break-continue", "date": "2026-05-01", "improvement": "-2.01% IndexCompact1", "pr_branch": "goopt/zero-cost-break-continue", "upstream_potential": "high"},
-    {"name": "inline-budget-90", "date": "2026-05-01", "improvement": "-2.89% IndexCompact100", "pr_branch": "goopt/inline-budget-90", "upstream_potential": "medium"},
-    {"name": "midpoint-bce-prove", "date": "2026-05-01", "improvement": "-3.06% geomean", "pr_branch": "goopt/midpoint-bce-prove", "upstream_potential": "high"}
+    {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
+    {"name": "signed-sub-flowfacts", "improvement": "-4.81% geomean", "date": "2026-04-30"},
+    {"name": "leaf-inline-bonus", "improvement": "-7.48% IndexCompact1M", "date": "2026-05-01"},
+    {"name": "zero-cost-break-continue", "improvement": "-2.01% IndexCompact1", "date": "2026-05-01"},
+    {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
-  "benchmark_baselines": {
-    "date": "2026-05-01",
-    "compiler": "go1.26.2 (system)",
-    "results": {
-      "BenchmarkIndexCompact1": "125.4 ns/op",
-      "BenchmarkIndexCompact100": "10.31 us/op",
-      "BenchmarkIndexCompact100000": "4.737 ms/op",
-      "BenchmarkIndexCompact1000000": "204.5 ms/op",
-      "BenchmarkIndexPut": "2.191 us/op",
-      "BenchmarkIndexGet": "1.898 us/op"
-    }
-  },
-  "last_run": "2026-05-01T08:50:00Z",
-  "last_tasks": [4, 5, 8, 9],
-  "task_substitutions": "Tasks 4,5 selected. Both executed successfully. midpoint-bce-prove validated with -3.06% geomean."
+  "backlog": [
+    {"name": "regalloc-spill-weight-around-calls", "priority": 3, "status": "untried"},
+    {"name": "wal-hot-path-profiling", "priority": 4, "status": "untried"},
+    {"name": "revision-map-hash-improvement", "priority": 5, "status": "investigated"},
+    {"name": "slice-noshrink-bce", "priority": 6, "status": "blocked"},
+    {"name": "ssa-phielim-compact-loop", "priority": 7, "status": "blocked"}
+  ],
+  "failed_attempts": [
+    {"name": "raise-inline-budget-85", "date": "2026-04-30", "reason": "no improvement"},
+    {"name": "bce-walk-reverse-iteration", "date": "2026-04-30", "reason": "alias analysis needed"},
+    {"name": "enable-newinliner", "date": "2026-05-01", "reason": "no improvement without PGO"},
+    {"name": "nil-guard-inlining-discount", "date": "2026-05-01", "reason": "+5.53% regression"},
+    {"name": "strict-ordering-add-relations", "date": "2026-05-01", "reason": "no improvement"},
+    {"name": "zero-cost-break-continue-findgen", "date": "2026-05-01", "reason": "+6.68% regression"},
+    {"name": "prove-nonneg-ordering-bce", "date": "2026-05-01", "reason": "correct but blocked by mapassign"}
+  ],
+  "last_run": {"date": "2026-05-01T10:13:00Z", "tasks_selected": [5,3,8], "tasks_executed": [1,4,5,8,9], "workflow_run_id": 25210734027},
+  "key_findings": [
+    "findGeneration cost=81 vs budget=80; inlining causes code bloat regression",
+    "All remaining mvcc BCE blocked by function calls clobbering memory state",
+    "prove pass ordering deductions blocked by overflow guards with wide limits",
+    "mapassign in doCompact closure prevents fact propagation across call"
+  ]
 }
