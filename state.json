@@ -1,5 +1,5 @@
 {
-  "go_version": {"commit": "f5126211", "date": "2026-05-01", "version": "go1.27-devel"},
+  "go_version": {"commit": "5756e857c8", "date": "2026-05-01", "version": "go1.27-devel"},
   "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-01"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
@@ -28,11 +28,13 @@
     {"name": "regalloc-spill-weight-around-calls", "date": "2026-05-01", "reason": "+4.14% regression on IndexCompact1"},
     {"name": "inline-budget-84", "date": "2026-05-01", "reason": "+140% regression on IndexCompact100k due to code bloat"},
     {"name": "prove-signed-sub-facts", "date": "2026-05-01", "reason": "+25% geomean regression"},
-    {"name": "leaf-inline-bonus-mutableChild", "date": "2026-05-01", "reason": "+1.98% regression on StorePut, icache pressure from inlining into large functions"},
-    {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE elimination through loop phis, +3.36% geomean (noise)"}
+    {"name": "leaf-inline-bonus-mutableChild", "date": "2026-05-01", "reason": "+1.98% regression on StorePut, icache pressure"},
+    {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
+    {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression on IndexCompact1, findGeneration inlining causes icache pressure in get"}
   ],
-  "last_run": {"date": "2026-05-01T16:41:00Z", "tasks_selected": [4,5,8], "tasks_executed": [1,4,5,8,9], "workflow_run_id": 25223081001},
+  "last_run": {"date": "2026-05-01T17:44:00Z", "tasks_selected": [4,5,8], "tasks_executed": [1,4,5,8,9], "workflow_run_id": 25225460337},
   "key_findings": [
+    "findGeneration already inlineable at cost 80 (was wrong earlier), no benefit from further inlining discount",
     "mutableChild (cost 86) is leaf-inlineable but inlining it regresses StorePut by 2% due to icache in large callers",
     "items[go.shape.*uint8].find costs 119 vs items[*keyIndex].find costs 73 - stenciling would help but is infeasible",
     "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
@@ -40,6 +42,8 @@
     "Alias analysis for stack locals would unlock remaining BCE opportunities",
     "CI benchmark noise is significant - IndexCompact100000 varies 2x between runs",
     "The go.shape.*uint8 generic dispatch adds ~46 cost units vs concrete instantiation",
-    "midpoint-bce-prove patch correct but ineffective: prove pass cannot establish ordering through loop phi nodes in btree.find binary search"
+    "IndexGet dominated by bytes.Compare/cmpbody (35% flat) - assembly level, not optimizable by SSA",
+    "IndexCompact dominated by runtime.mapassign (43%) - runtime, not compiler codegen",
+    "Profile: cmpbody 35%, Less 24%, find.func1 8%, sort.Search 2% - comparison is the bottleneck"
   ]
 }
