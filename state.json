@@ -9,8 +9,8 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "wal-hot-path-profiling", "priority": 3, "status": "untried", "note": "newEncoder cost 85 (5 over budget, NOT leaf)"},
-    {"name": "revision-map-hash-improvement", "priority": 4, "status": "investigated"},
+    {"name": "wal-hot-path-profiling", "priority": 3, "status": "investigated", "note": "WAL dominated by syscalls/time.Now/GC - no SSA opportunity"},
+    {"name": "revision-map-hash-improvement", "priority": 4, "status": "untried"},
     {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "needed for BCE in findGeneration/walk"},
     {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "shape version costs 119, concrete costs 73 but isn't used"},
     {"name": "stenciling-over-dictionaries", "priority": 7, "status": "investigated", "note": "would need major generics impl change"}
@@ -24,26 +24,22 @@
     {"name": "zero-cost-break-continue-findgen", "date": "2026-05-01", "reason": "+6.68% regression"},
     {"name": "prove-nonneg-ordering-bce", "date": "2026-05-01", "reason": "correct but blocked by mapassign"},
     {"name": "phi-of-uniform-adds-indvar", "date": "2026-05-01", "reason": "BCE blocked by memory aliasing"},
-    {"name": "inline-budget-82", "date": "2026-05-01", "reason": "+6.46% regression, code bloat without alloc elimination"},
-    {"name": "regalloc-spill-weight-around-calls", "date": "2026-05-01", "reason": "+4.14% regression on IndexCompact1"},
-    {"name": "inline-budget-84", "date": "2026-05-01", "reason": "+140% regression on IndexCompact100k due to code bloat"},
+    {"name": "inline-budget-82", "date": "2026-05-01", "reason": "+6.46% regression, code bloat"},
+    {"name": "regalloc-spill-weight-around-calls", "date": "2026-05-01", "reason": "+4.14% regression"},
+    {"name": "inline-budget-84", "date": "2026-05-01", "reason": "+140% regression due to code bloat"},
     {"name": "prove-signed-sub-facts", "date": "2026-05-01", "reason": "+25% geomean regression"},
-    {"name": "leaf-inline-bonus-mutableChild", "date": "2026-05-01", "reason": "+1.98% regression on StorePut, icache pressure"},
+    {"name": "leaf-inline-bonus-mutableChild", "date": "2026-05-01", "reason": "+1.98% regression, icache pressure"},
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
-    {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression on IndexCompact1, findGeneration inlining causes icache pressure in get"}
+    {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression, icache pressure"}
   ],
-  "last_run": {"date": "2026-05-01T17:44:00Z", "tasks_selected": [4,5,8], "tasks_executed": [1,4,5,8,9], "workflow_run_id": 25225460337},
+  "last_run": {"date": "2026-05-01T18:49:00Z", "tasks_selected": [5,4,8], "tasks_executed": [1,2,8,9], "workflow_run_id": 25227953505},
   "key_findings": [
-    "findGeneration already inlineable at cost 80 (was wrong earlier), no benefit from further inlining discount",
-    "mutableChild (cost 86) is leaf-inlineable but inlining it regresses StorePut by 2% due to icache in large callers",
-    "items[go.shape.*uint8].find costs 119 vs items[*keyIndex].find costs 73 - stenciling would help but is infeasible",
+    "WAL encoder.encode 49.7% cum - blocked by DEFER (cannot inline)",
+    "WAL write() dominated by syscall (17.6% flat) and time.Now (14.8% flat)",
+    "WAL BCE at encoder.go:124 requires interprocedural analysis (param slice)",
+    "mvcc: cmpbody 35% flat (asm), runtime.mapassign 43% - not compiler-optimizable",
     "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
-    "WAL newEncoder costs 85 but is NOT a leaf (makes calls), so leaf bonus doesn't help",
-    "Alias analysis for stack locals would unlock remaining BCE opportunities",
-    "CI benchmark noise is significant - IndexCompact100000 varies 2x between runs",
-    "The go.shape.*uint8 generic dispatch adds ~46 cost units vs concrete instantiation",
-    "IndexGet dominated by bytes.Compare/cmpbody (35% flat) - assembly level, not optimizable by SSA",
-    "IndexCompact dominated by runtime.mapassign (43%) - runtime, not compiler codegen",
-    "Profile: cmpbody 35%, Less 24%, find.func1 8%, sort.Search 2% - comparison is the bottleneck"
+    "Optimization frontier largely exhausted for mvcc and WAL at SSA level",
+    "Only remaining untried item: revision-map-hash-improvement (map key hash codegen)"
   ]
 }
