@@ -6,9 +6,9 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-04-30T22:38:00Z",
+    "last_validated": "2026-05-01T00:00:00Z",
     "tests_passed": ["server/storage/mvcc"],
-    "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override."
+    "note": "Must use GOTOOLCHAIN=local. Built with GOEXPERIMENT=newinliner for testing."
   },
   "hot_paths": [
     {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
@@ -21,10 +21,12 @@
     "mvcc_total_samples": "79.06s"
   },
   "optimization_backlog": [
-    {"priority": 1, "name": "walk-len-invariant-tracking", "status": "not_feasible", "note": "BCE not eliminable due to slice reload after closure call (aliasing). Prove pass cannot unify reloaded SliceLen with original."},
-    {"priority": 2, "name": "findGeneration-cost-reduction", "status": "no_improvement", "note": "len/cap cost=0 enables inlining (cost 78 vs budget 80) but no measurable benchmark improvement. Function too small to benefit from inlining in practice."},
-    {"priority": 3, "name": "enable-newinliner", "status": "untried"},
-    {"priority": 4, "name": "bce-walk-alias-analysis", "status": "blocked_by_design"}
+    {"priority": 1, "name": "walk-len-invariant-tracking", "status": "not_feasible"},
+    {"priority": 2, "name": "findGeneration-cost-reduction", "status": "no_improvement"},
+    {"priority": 3, "name": "enable-newinliner", "status": "no_significant_improvement", "note": "-2.11% geomean but no individual bench p<0.05. Not statistically significant."},
+    {"priority": 4, "name": "bce-walk-alias-analysis", "status": "blocked_by_design"},
+    {"priority": 5, "name": "ssa-phielim-compact-loop", "status": "untried", "note": "Investigate phi elimination in compact's inner loop to reduce register pressure."},
+    {"priority": 6, "name": "strength-reduction-revision-compare", "status": "untried", "note": "Revision struct comparisons may benefit from strength reduction on hot comparison paths."}
   ],
   "attempt_log": [
     {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement"},
@@ -33,27 +35,28 @@
     {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean"},
     {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement"},
     {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"},
-    {"date": "2026-04-30", "name": "len-cap-zero-cost-inlining", "result": "no_improvement", "detail": "Enables findGeneration inlining but no benchmark delta. Aliasing prevents BCE on walk's bounds check."},
-    {"date": "2026-04-30", "name": "prove-unsigned-sub-ordering", "result": "not_applicable", "detail": "walk bounds check uses reloaded SliceLen after closure call; can't prove equality with original len value"}
+    {"date": "2026-04-30", "name": "len-cap-zero-cost-inlining", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "prove-unsigned-sub-ordering", "result": "not_applicable"},
+    {"date": "2026-05-01", "name": "enable-newinliner", "result": "no_significant_improvement", "detail": "-2.11% geomean but p>0.05 on all benchmarks"}
   ],
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
     {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"}
   ],
   "benchmark_baselines": {
-    "date": "2026-04-30",
+    "date": "2026-05-01",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "133.5 ns/op",
-      "BenchmarkIndexCompact100": "11.16 us/op",
-      "BenchmarkIndexCompact10000": "1.116 ms/op",
-      "BenchmarkIndexCompact100000": "10.77 ms/op",
-      "BenchmarkIndexCompact1000000": "191.9 ms/op",
-      "BenchmarkIndexPut": "2.298 us/op",
-      "BenchmarkIndexGet": "2.002 us/op"
+      "BenchmarkIndexCompact1": "127.3 ns/op",
+      "BenchmarkIndexCompact100": "10.40 us/op",
+      "BenchmarkIndexCompact10000": "1.048 ms/op",
+      "BenchmarkIndexCompact100000": "7.357 ms/op",
+      "BenchmarkIndexCompact1000000": "233.6 ms/op",
+      "BenchmarkIndexPut": "2.337 us/op",
+      "BenchmarkIndexGet": "2.082 us/op"
     }
   },
-  "last_run": "2026-04-30T22:38:00Z",
+  "last_run": "2026-05-01T00:00:00Z",
   "last_tasks": [4, 5, 8, 9],
-  "task_substitutions": "Tasks 4,5 selected. Task 1 substituted (side compiler not in container). Built compiler, attempted len/cap zero-cost inlining and prove pass improvements. No measurable improvement on this run."
+  "task_substitutions": "Tasks 4,5 selected. Side compiler rebuilt (ephemeral container). Tried GOEXPERIMENT=newinliner - no statistically significant improvement."
 }
