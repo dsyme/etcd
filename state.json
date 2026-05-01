@@ -6,9 +6,8 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-05-01T00:20:00Z",
-    "tests_passed": ["server/storage/mvcc"],
-    "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override."
+    "last_validated": "2026-05-01T00:29:00Z",
+    "tests_passed": ["server/storage/mvcc"]
   },
   "hot_paths": [
     {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
@@ -21,10 +20,8 @@
     "mvcc_total_samples": "79.06s"
   },
   "optimization_backlog": [
-    {"priority": 1, "name": "walk-len-invariant-tracking", "status": "blocked_by_design", "note": "closure aliasing prevents BCE"},
-    {"priority": 2, "name": "findGeneration-cost-reduction", "status": "failed", "note": "inlining regressed IndexGet +7%"},
-    {"priority": 3, "name": "enable-newinliner", "status": "untried"},
-    {"priority": 4, "name": "bce-walk-alias-analysis", "status": "blocked_by_design"}
+    {"priority": 5, "name": "ssa-phielim-compact-loop", "status": "untried"},
+    {"priority": 6, "name": "strength-reduction-revision-compare", "status": "untried"}
   ],
   "attempt_log": [
     {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement"},
@@ -33,26 +30,30 @@
     {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean"},
     {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement"},
     {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"},
-    {"date": "2026-05-01", "name": "findGeneration-cost-reduction", "result": "regression", "detail": "OCONTINUE/OBREAK zero-cost enabled inlining but IndexGet regressed +7.18%"}
+    {"date": "2026-04-30", "name": "len-cap-zero-cost-inlining", "result": "no_improvement"},
+    {"date": "2026-04-30", "name": "prove-unsigned-sub-ordering", "result": "not_applicable"},
+    {"date": "2026-05-01", "name": "enable-newinliner", "result": "no_significant_improvement"},
+    {"date": "2026-05-01", "name": "leaf-inline-bonus", "result": "validated", "detail": "-7.48% IndexCompact1M (p=0.000), -3.00% IndexPut (p=0.014)"}
   ],
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
-    {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"}
+    {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"},
+    {"name": "leaf-inline-bonus", "date": "2026-05-01", "improvement": "-7.48% IndexCompact1M", "pr_branch": "goopt/leaf-inline-bonus", "upstream_potential": "high"}
   ],
   "benchmark_baselines": {
     "date": "2026-05-01",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "126.2 ns/op",
-      "BenchmarkIndexCompact100": "10.32 us/op",
-      "BenchmarkIndexCompact10000": "888.2 us/op",
-      "BenchmarkIndexCompact100000": "4.751 ms/op",
-      "BenchmarkIndexCompact1000000": "209.3 ms/op",
-      "BenchmarkIndexPut": "1.983 us/op",
-      "BenchmarkIndexGet": "1.768 us/op"
+      "BenchmarkIndexCompact1": "128.7 ns/op",
+      "BenchmarkIndexCompact100": "10.26 us/op",
+      "BenchmarkIndexCompact10000": "872.9 us/op",
+      "BenchmarkIndexCompact100000": "5.902 ms/op",
+      "BenchmarkIndexCompact1000000": "232.2 ms/op",
+      "BenchmarkIndexPut": "2.114 us/op",
+      "BenchmarkIndexGet": "1.809 us/op"
     }
   },
-  "last_run": "2026-05-01T00:22:00Z",
-  "last_tasks": [4, 5, 8, 9],
-  "task_substitutions": "Tasks 4,2 selected. Task 4 implemented findGeneration-cost-reduction (OCONTINUE/OBREAK zero-cost). Task 5 benchmarked: regression. Reverted."
+  "last_run": "2026-05-01T00:29:00Z",
+  "last_tasks": [1, 4, 5, 8, 9],
+  "task_substitutions": "Tasks 5,4 selected. Task 1 substituted (ephemeral container). Implemented leaf-inline-bonus, validated -7.48% on IndexCompact1M."
 }
