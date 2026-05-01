@@ -6,8 +6,9 @@
     "path": "/tmp/goopt/go",
     "version": "go1.26.0",
     "source": "go.googlesource.com/go tag go1.26.0",
-    "last_validated": "2026-05-01T00:29:00Z",
-    "tests_passed": ["server/storage/mvcc"]
+    "last_validated": "2026-05-01T01:30:00Z",
+    "tests_passed": ["server/storage/mvcc"],
+    "note": "Must use GOTOOLCHAIN=local to prevent toolchain directive override."
   },
   "hot_paths": [
     {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
@@ -20,8 +21,10 @@
     "mvcc_total_samples": "79.06s"
   },
   "optimization_backlog": [
-    {"priority": 5, "name": "ssa-phielim-compact-loop", "status": "untried"},
-    {"priority": 6, "name": "strength-reduction-revision-compare", "status": "untried"}
+    {"priority": 1, "name": "doCompact-inlining-via-newinliner", "status": "blocked_by_scoring", "note": "GOEXPERIMENT=newinliner marks doCompact inlinable (cost 120 < budget 160) but call-site score 120 > maxCost 80 prevents actual inlining. PGO shows 50% improvement when doCompact is inlined. Need scoring adjustment or budget increase for non-runtime packages."},
+    {"priority": 2, "name": "walk-bce-reverse-iteration", "status": "blocked_by_design", "note": "g.revs[l-i-1] BCE not eliminated because l is captured separately from len(g.revs) in SSA; prove pass can't correlate them across basic blocks"},
+    {"priority": 3, "name": "enable-newinliner", "status": "explored", "note": "newinliner experiment exists but doesn't help doCompact due to call-site scoring. Need custom scoring adj."},
+    {"priority": 4, "name": "bce-walk-alias-analysis", "status": "blocked_by_design"}
   ],
   "attempt_log": [
     {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement"},
@@ -30,30 +33,29 @@
     {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean"},
     {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement"},
     {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"},
-    {"date": "2026-04-30", "name": "len-cap-zero-cost-inlining", "result": "no_improvement"},
-    {"date": "2026-04-30", "name": "prove-unsigned-sub-ordering", "result": "not_applicable"},
-    {"date": "2026-05-01", "name": "enable-newinliner", "result": "no_significant_improvement"},
-    {"date": "2026-05-01", "name": "leaf-inline-bonus", "result": "validated", "detail": "-7.48% IndexCompact1M (p=0.000), -3.00% IndexPut (p=0.014)"}
+    {"date": "2026-05-01", "name": "findGeneration-cost-reduction", "result": "regression", "detail": "OCONTINUE/OBREAK zero-cost enabled inlining but IndexGet regressed +7.18%"},
+    {"date": "2026-05-01", "name": "prove-strict-sub-todos", "result": "no_improvement", "detail": "Enabled TODO in detectSubRelations (strict ordering gives signedMin 1). No BCE eliminated in mvcc; geomean -0.24% (noise)."},
+    {"date": "2026-05-01", "name": "raise-budget-100", "result": "build_failure", "detail": "Breaks runtime/proc.go (assembly expects certain functions not inlined)"},
+    {"date": "2026-05-01", "name": "closure-cost-reduction", "result": "no_effect", "detail": "Reducing closure cost 15->5 doesn't change doCompact's own cost (closure is inside doCompact)"}
   ],
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
-    {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"},
-    {"name": "leaf-inline-bonus", "date": "2026-05-01", "improvement": "-7.48% IndexCompact1M", "pr_branch": "goopt/leaf-inline-bonus", "upstream_potential": "high"}
+    {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"}
   ],
   "benchmark_baselines": {
     "date": "2026-05-01",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "128.7 ns/op",
-      "BenchmarkIndexCompact100": "10.26 us/op",
-      "BenchmarkIndexCompact10000": "872.9 us/op",
-      "BenchmarkIndexCompact100000": "5.902 ms/op",
-      "BenchmarkIndexCompact1000000": "232.2 ms/op",
-      "BenchmarkIndexPut": "2.114 us/op",
-      "BenchmarkIndexGet": "1.809 us/op"
+      "BenchmarkIndexCompact1": "128.4 ns/op",
+      "BenchmarkIndexCompact100": "10.68 us/op",
+      "BenchmarkIndexCompact10000": "1.070 ms/op",
+      "BenchmarkIndexCompact100000": "3.735 ms/op",
+      "BenchmarkIndexCompact1000000": "153.3 ms/op",
+      "BenchmarkIndexPut": "1.983 us/op",
+      "BenchmarkIndexGet": "1.768 us/op"
     }
   },
-  "last_run": "2026-05-01T00:29:00Z",
-  "last_tasks": [1, 4, 5, 8, 9],
-  "task_substitutions": "Tasks 5,4 selected. Task 1 substituted (ephemeral container). Implemented leaf-inline-bonus, validated -7.48% on IndexCompact1M."
+  "last_run": "2026-05-01T01:30:00Z",
+  "last_tasks": [4, 5, 8, 9],
+  "task_substitutions": "Tasks 4,5 selected. Task 1 substituted (side compiler rebuild). Task 4: explored multiple approaches (prove-strict-sub-todos, budget increase, newinliner experiment, closure cost). None yielded improvement. Key finding: PGO shows 50% win from doCompact inlining but no path to achieve without PGO currently."
 }
