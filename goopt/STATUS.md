@@ -12,9 +12,9 @@ etcd's hot paths, validated by the project's benchmark suite.
 | Item | Value |
 |------|-------|
 | Go version | 1.26 (go.mod) |
-| Side compiler | go1.27-devel (HEAD 87fe5faf), built and validated |
+| Side compiler | built (HEAD 87fe5faf, master) |
 | Compiler modifications | 5 validated patches |
-| Profiling done | Yes — 2026-04-30 (mvcc BenchmarkIndex*) |
+| Profiling done | yes — 2026-05-01 |
 | Optimization backlog | 5 items (2 untried, 3 blocked) |
 | Validated improvements | 5 optimizations with benchstat evidence |
 
