@@ -9,9 +9,9 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "regalloc-spill-weight-around-calls", "priority": 3, "status": "untried"},
-    {"name": "wal-hot-path-profiling", "priority": 4, "status": "untried"},
-    {"name": "revision-map-hash-improvement", "priority": 5, "status": "investigated"},
+    {"name": "wal-hot-path-profiling", "priority": 1, "status": "untried"},
+    {"name": "revision-map-hash-improvement", "priority": 2, "status": "investigated"},
+    {"name": "regalloc-spill-weight-around-calls", "priority": 3, "status": "investigated-low-impact"},
     {"name": "slice-noshrink-bce", "priority": 6, "status": "blocked"},
     {"name": "ssa-phielim-compact-loop", "priority": 7, "status": "blocked"}
   ],
@@ -24,11 +24,13 @@
     {"name": "zero-cost-break-continue-findgen", "date": "2026-05-01", "reason": "+6.68% regression"},
     {"name": "prove-nonneg-ordering-bce", "date": "2026-05-01", "reason": "correct but blocked by mapassign"}
   ],
-  "last_run": {"date": "2026-05-01T10:13:00Z", "tasks_selected": [5,3,8], "tasks_executed": [1,4,5,8,9], "workflow_run_id": 25210734027},
+  "last_run": {"date": "2026-05-01T11:45:00Z", "tasks_selected": [5,4,8], "tasks_executed": [1,8,9], "workflow_run_id": 25213097255},
   "key_findings": [
-    "findGeneration cost=81 vs budget=80; inlining causes code bloat regression",
+    "IndexPut dominated by cmpbody (31% flat) - irreducible memory comparison",
+    "Generic shape instantiation prevents items.find inlining (cost 119 > 80)",
+    "IndexCompact allocation-bound: mallocgc 40%, GC 29%, makemap_small 20%",
     "All remaining mvcc BCE blocked by function calls clobbering memory state",
-    "prove pass ordering deductions blocked by overflow guards with wide limits",
-    "mapassign in doCompact closure prevents fact propagation across call"
+    "regalloc-spill-weight unlikely to help allocation-dominated workloads",
+    "Next focus: WAL/backend benchmarks may have more compiler-optimizable patterns"
   ]
 }
