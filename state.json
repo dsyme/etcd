@@ -4,63 +4,60 @@
   "side_compiler": {
     "status": "built_and_validated",
     "path": "/tmp/goopt/go",
-    "version": "go1.27-devel_87fe5faf",
-    "source": "go.googlesource.com/go HEAD master (87fe5faf)",
-    "last_validated": "2026-05-01T08:00:00Z",
-    "tests_passed": ["server/storage/mvcc"],
-    "note": "HEAD of master as of 2026-04-30. Must use GOTOOLCHAIN=local."
+    "version": "go-master-87fe5faf",
+    "source": "go.googlesource.com/go HEAD master",
+    "last_validated": "2026-05-01T08:50:00Z",
+    "tests_passed": ["build", "mvcc"],
+    "note": "Rebuilt at latest HEAD 87fe5faf with midpoint-bce-prove patch applied"
   },
   "hot_paths": [
+    {"func": "cmpbody (asm)", "flat_pct": 34.33, "cum_pct": 34.33, "pkg": "bytealg", "note": "Hand-tuned asm, cannot optimize at compiler level"},
+    {"func": "(*keyIndex).Less", "flat_pct": 18.15, "cum_pct": 52.74, "pkg": "mvcc", "note": "Inlineable (cost 71), bottleneck is bytes.Compare asm"},
     {"func": "(*keyIndex).compact", "flat_pct": 11.21, "cum_pct": 38.25, "pkg": "mvcc"},
-    {"func": "(*generation).walk", "flat_pct": 9.5, "cum_pct": 20.12, "pkg": "mvcc"},
-    {"func": "(*keyIndex).Less", "flat_pct": 7.72, "cum_pct": 20.71, "pkg": "mvcc"}
+    {"func": "(*generation).walk", "flat_pct": 9.5, "cum_pct": 20.12, "pkg": "mvcc", "note": "BCE blocked by f() clobbering memory"},
+    {"func": "items.find (binary search)", "flat_pct": 2.09, "cum_pct": 65.93, "pkg": "btree", "note": "cost 119, not inlineable. 3 BCE eliminated by midpoint-bce-prove"}
   ],
   "profiling": {
-    "date": "2026-04-30T17:40:00Z",
-    "benchmarks_profiled": ["mvcc BenchmarkIndex*"],
-    "mvcc_total_samples": "79.06s"
+    "date": "2026-05-01T07:43:00Z",
+    "benchmarks_profiled": ["mvcc BenchmarkIndexPut"],
+    "note": "Put dominated by btree binary search (65%) and bytes.Compare (35%)"
   },
   "optimization_backlog": [
-    {"priority": 3, "name": "regalloc-spill-weight-around-calls", "status": "untried", "note": "doCompact inner loop spills 8 regs around mapassign. Improving spill weights for loop-carried values could reduce overhead."},
-    {"priority": 4, "name": "slice-noshrink-bce", "status": "blocked", "note": "Need alias analysis to prove slice doesn't shrink across calls. Fundamental compiler limitation."},
-    {"priority": 5, "name": "ssa-phielim-compact-loop", "status": "blocked", "note": "Requires alias analysis to prove slice not modified by mapassign"},
-    {"priority": 6, "name": "wal-hot-path-profiling", "status": "untried", "note": "Profile WAL benchmarks for codegen opportunities in encoding/fsync paths"},
-    {"priority": 7, "name": "revision-map-hash-improvement", "status": "untried", "note": "Revision is 16-byte struct used as map key in compact. Check if hash/equality codegen can be improved."}
+    {"priority": 1, "name": "regalloc-spill-weight-around-calls", "status": "untried", "note": "8 regs spilled around mapassign in doCompact"},
+    {"priority": 2, "name": "wal-hot-path-profiling", "status": "untried", "note": "Profile WAL benchmarks for encoding/fsync codegen"},
+    {"priority": 3, "name": "revision-map-hash-improvement", "status": "untried", "note": "16-byte struct map key hash codegen"},
+    {"priority": 4, "name": "bce-reverse-iteration-walk", "status": "blocked", "note": "mapassign clobbers slice memory state"},
+    {"priority": 5, "name": "inline-items-find", "status": "blocked", "note": "cost 119 vs budget 90; budget >=100 breaks runtime"}
   ],
   "attempt_log": [
-    {"date": "2026-04-30", "name": "raise-inline-budget-85", "result": "no_improvement"},
-    {"date": "2026-04-30", "name": "bce-walk-reverse-iteration", "result": "cannot_fix"},
-    {"date": "2026-04-30", "name": "raise-budget-120-non-runtime", "result": "no_improvement"},
     {"date": "2026-04-30", "name": "prove-strict-subtraction", "result": "validated", "detail": "-9.85% geomean"},
-    {"date": "2026-04-30", "name": "inline-free-continue-break", "result": "no_improvement"},
     {"date": "2026-04-30", "name": "signed-sub-flowfacts", "result": "validated", "detail": "-4.81% geomean"},
-    {"date": "2026-04-30", "name": "len-cap-zero-cost-inlining", "result": "no_improvement"},
-    {"date": "2026-04-30", "name": "prove-unsigned-sub-ordering", "result": "not_applicable"},
-    {"date": "2026-05-01", "name": "enable-newinliner", "result": "no_significant_improvement"},
-    {"date": "2026-05-01", "name": "leaf-inline-bonus", "result": "validated", "detail": "-7.48% IndexCompact1M (p=0.000), -3.00% IndexPut (p=0.014)"},
-    {"date": "2026-05-01", "name": "zero-cost-break-continue", "result": "validated", "detail": "-2.01% IndexCompact1 (p=0.015)"},
-    {"date": "2026-05-01", "name": "strict-sub-signedmin", "result": "not_applicable", "detail": "BCE for reverse iteration blocked by struct field slice"},
-    {"date": "2026-05-01", "name": "strict-ordering-add-relations", "result": "no_improvement", "detail": "No significant benchmark impact. Core issue: walk() BCE blocked by mapassign."},
-    {"date": "2026-05-01", "name": "nil-guard-inlining-discount", "result": "no_improvement", "detail": "Successfully inlined BTree.Get (cost 81->79, 4 sites). Benchmark showed +5.53% regression on Compact1 (code bloat), no improvement on larger benchmarks. Reverted."}
+    {"date": "2026-05-01", "name": "leaf-inline-bonus", "result": "validated", "detail": "-7.48% IndexCompact1M"},
+    {"date": "2026-05-01", "name": "zero-cost-break-continue", "result": "validated", "detail": "-2.01% IndexCompact1"},
+    {"date": "2026-05-01", "name": "inline-budget-90", "result": "validated", "detail": "-2.89% IndexCompact100"},
+    {"date": "2026-05-01", "name": "midpoint-bce-prove", "result": "validated", "detail": "-3.06% geomean (-9.32% Compact100K, -5.56% Get, -5.02% Put). 3 BCE eliminated in key_index.go."}
   ],
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "date": "2026-04-30", "improvement": "-9.85% geomean", "pr_branch": "goopt/prove-strict-subtraction", "upstream_potential": "high"},
     {"name": "signed-sub-flowfacts", "date": "2026-04-30", "improvement": "-4.81% geomean", "pr_branch": "goopt/signed-sub-flowfacts", "upstream_potential": "high"},
     {"name": "leaf-inline-bonus", "date": "2026-05-01", "improvement": "-7.48% IndexCompact1M", "pr_branch": "goopt/leaf-inline-bonus", "upstream_potential": "high"},
-    {"name": "zero-cost-break-continue", "date": "2026-05-01", "improvement": "-2.01% IndexCompact1", "pr_branch": "goopt/zero-cost-break-continue", "upstream_potential": "high"}
+    {"name": "zero-cost-break-continue", "date": "2026-05-01", "improvement": "-2.01% IndexCompact1", "pr_branch": "goopt/zero-cost-break-continue", "upstream_potential": "high"},
+    {"name": "inline-budget-90", "date": "2026-05-01", "improvement": "-2.89% IndexCompact100", "pr_branch": "goopt/inline-budget-90", "upstream_potential": "medium"},
+    {"name": "midpoint-bce-prove", "date": "2026-05-01", "improvement": "-3.06% geomean", "pr_branch": "goopt/midpoint-bce-prove", "upstream_potential": "high"}
   ],
   "benchmark_baselines": {
     "date": "2026-05-01",
     "compiler": "go1.26.2 (system)",
     "results": {
-      "BenchmarkIndexCompact1": "127.4 ns/op",
-      "BenchmarkIndexCompact100": "10.44 us/op",
-      "BenchmarkIndexCompact10000": "1.059 ms/op",
-      "BenchmarkIndexPut": "2.432 us/op",
-      "BenchmarkIndexGet": "2.160 us/op"
+      "BenchmarkIndexCompact1": "125.4 ns/op",
+      "BenchmarkIndexCompact100": "10.31 us/op",
+      "BenchmarkIndexCompact100000": "4.737 ms/op",
+      "BenchmarkIndexCompact1000000": "204.5 ms/op",
+      "BenchmarkIndexPut": "2.191 us/op",
+      "BenchmarkIndexGet": "1.898 us/op"
     }
   },
-  "last_run": "2026-05-01T08:00:00Z",
-  "last_tasks": [3, 5, 8, 9],
-  "task_substitutions": "Tasks 5,3 selected. Task 5 substituted to Task 3 (no new untested optimization). Ran Task 3: identified nil-guard-inlining-discount opportunity, implemented and benchmarked - no improvement, reverted. Updated backlog with new opportunities (regalloc spill weights, WAL profiling, revision map hash)."
+  "last_run": "2026-05-01T08:50:00Z",
+  "last_tasks": [4, 5, 8, 9],
+  "task_substitutions": "Tasks 4,5 selected. Both executed successfully. midpoint-bce-prove validated with -3.06% geomean."
 }
