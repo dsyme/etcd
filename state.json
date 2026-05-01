@@ -1,5 +1,5 @@
 {
-  "go_version": {"commit": "5756e857c8", "date": "2026-05-01", "version": "go1.27-devel"},
+  "go_version": {"commit": "cb39d7aa", "date": "2026-05-01", "version": "go1.27-devel"},
   "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-01"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
@@ -9,8 +9,8 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "wal-hot-path-profiling", "priority": 3, "status": "investigated", "note": "WAL dominated by syscalls/time.Now/GC - no SSA opportunity"},
-    {"name": "revision-map-hash-improvement", "priority": 4, "status": "untried"},
+    {"name": "revision-map-hash-improvement", "priority": 4, "status": "investigated", "note": "Revision is 16-byte struct (2x int64), Go already uses efficient memhash. No SSA opportunity."},
+    {"name": "sort-search-closure-devirt", "priority": 5, "status": "untried", "note": "items.find uses sort.Search with closure; devirtualizing could eliminate indirect call overhead in btree binary search"},
     {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "needed for BCE in findGeneration/walk"},
     {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "shape version costs 119, concrete costs 73 but isn't used"},
     {"name": "stenciling-over-dictionaries", "priority": 7, "status": "investigated", "note": "would need major generics impl change"}
@@ -32,7 +32,7 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression, icache pressure"}
   ],
-  "last_run": {"date": "2026-05-01T18:49:00Z", "tasks_selected": [5,4,8], "tasks_executed": [1,2,8,9], "workflow_run_id": 25227953505},
+  "last_run": {"date": "2026-05-01T20:36:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25232000942, "notes": "Task 4 skipped - frontier exhausted, no viable untried optimization. Task 3 confirmed remaining backlog items blocked or low-ROI."},
   "key_findings": [
     "WAL encoder.encode 49.7% cum - blocked by DEFER (cannot inline)",
     "WAL write() dominated by syscall (17.6% flat) and time.Now (14.8% flat)",
@@ -40,6 +40,9 @@
     "mvcc: cmpbody 35% flat (asm), runtime.mapassign 43% - not compiler-optimizable",
     "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
     "Optimization frontier largely exhausted for mvcc and WAL at SSA level",
-    "Only remaining untried item: revision-map-hash-improvement (map key hash codegen)"
+    "BTree.Get costs 81 (budget 80) - pushed over by 57-cost call to non-inlineable node.get (cost 167)",
+    "findGeneration costs 81 (budget 80) - would need zero-cost-break-continue patch (already validated)",
+    "Revision map hashing already efficient (16-byte memhash on 2x int64 struct)",
+    "sort.Search closure in items.find is potential devirt target but complex to implement"
   ]
 }
