@@ -1,5 +1,5 @@
 {
-  "go_version": {"commit": "bb416f50", "date": "2026-05-01", "version": "go1.27-devel"},
+  "go_version": {"commit": "4aa6dad5", "date": "2026-05-01", "version": "go1.27-devel"},
   "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-01"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
@@ -9,10 +9,11 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "wal-hot-path-profiling", "priority": 3, "status": "untried", "note": "newEncoder cost 85 (3 over budget)"},
+    {"name": "wal-hot-path-profiling", "priority": 3, "status": "untried", "note": "newEncoder cost 85 (5 over budget, NOT leaf)"},
     {"name": "revision-map-hash-improvement", "priority": 4, "status": "investigated"},
-    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "needed for BCE in findGeneration"},
-    {"name": "inline-items-find", "priority": 6, "status": "blocked"}
+    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "needed for BCE in findGeneration/walk"},
+    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "shape version costs 119, concrete costs 73 but isn't used"},
+    {"name": "stenciling-over-dictionaries", "priority": 7, "status": "investigated", "note": "would need major generics impl change"}
   ],
   "failed_attempts": [
     {"name": "raise-inline-budget-85", "date": "2026-04-30", "reason": "no improvement"},
@@ -26,17 +27,17 @@
     {"name": "inline-budget-82", "date": "2026-05-01", "reason": "+6.46% regression, code bloat without alloc elimination"},
     {"name": "regalloc-spill-weight-around-calls", "date": "2026-05-01", "reason": "+4.14% regression on IndexCompact1"},
     {"name": "inline-budget-84", "date": "2026-05-01", "reason": "+140% regression on IndexCompact100k due to code bloat"},
-    {"name": "prove-signed-sub-facts", "date": "2026-05-01", "reason": "+25% geomean regression, likely incorrect bounds tightening"}
+    {"name": "prove-signed-sub-facts", "date": "2026-05-01", "reason": "+25% geomean regression"},
+    {"name": "leaf-inline-bonus-mutableChild", "date": "2026-05-01", "reason": "+1.98% regression on StorePut, icache pressure from inlining into large functions"}
   ],
-  "last_run": {"date": "2026-05-01T14:10:00Z", "tasks_selected": [5,4,8], "tasks_executed": [1,4,5,8,9], "workflow_run_id": 25217431956},
+  "last_run": {"date": "2026-05-01T15:43:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,4,8,9], "workflow_run_id": 25220860223},
   "key_findings": [
-    "inline-budget-82/84 inlines BTree.Get and findGeneration but REGRESSES massively due to code bloat",
-    "regalloc spill-weight-around-calls: preferring cross-call spills doesn't help, slight regression",
-    "prove signed-sub-facts: adding v<=x for v=x-y (y>=0) causes massive regression - likely over-constraining",
-    "keyi allocation in unsafeGet escapes because node.get (cost 167) can't be inlined",
+    "mutableChild (cost 86) is leaf-inlineable but inlining it regresses StorePut by 2% due to icache in large callers",
+    "items[go.shape.*uint8].find costs 119 vs items[*keyIndex].find costs 73 - stenciling would help but is infeasible",
     "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
-    "WAL newEncoder costs 85 - potential target for WAL-specific optimization",
+    "WAL newEncoder costs 85 but is NOT a leaf (makes calls), so leaf bonus doesn't help",
     "Alias analysis for stack locals would unlock remaining BCE opportunities",
-    "CI benchmark noise is significant - IndexCompact100000 varies 2x between runs"
+    "CI benchmark noise is significant - IndexCompact100000 varies 2x between runs",
+    "The go.shape.*uint8 generic dispatch adds ~46 cost units vs concrete instantiation"
   ]
 }
