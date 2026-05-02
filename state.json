@@ -1,5 +1,5 @@
 {
-  "go_version": {"commit": "8594bf4621", "date": "2026-05-01", "version": "go1.27-devel"},
+  "go_version": {"commit": "8594bf4621", "date": "2026-05-02", "version": "go1.27-devel"},
   "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-02"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
@@ -9,6 +9,7 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
+    {"name": "txn-escape-analysis", "priority": 6, "status": "untried", "note": "txn Range: 627 allocs/op for 100 keys; checkLease cost 83, Count cost 92"},
     {"name": "sort-search-closure-devirt", "priority": 5, "status": "untried", "note": "Complex: requires interprocedural devirtualization of sort.Interface calls"},
     {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Required for BCE in dedupe/walk/range - major compiler infrastructure change"},
     {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90; budget >=100 breaks runtime"},
@@ -32,15 +33,16 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression, icache pressure"}
   ],
-  "last_run": {"date": "2026-05-02T07:15:00Z", "tasks_selected": [1,4,8], "tasks_executed": [1,8,9], "workflow_run_id": 25246616958, "notes": "Compiler refreshed to 8594bf4621. Frontier still exhausted. Status updates only."},
+  "last_run": {"date": "2026-05-02T09:05:00Z", "tasks_selected": [3,4,8], "tasks_executed": [3,8,9], "workflow_run_id": 25248308976, "notes": "Profiled WAL (I/O-bound), analyzed txn codegen. Added txn-escape-analysis to backlog."},
   "key_findings": [
-    "WAL encoder.encode 49.7% cum - blocked by DEFER (cannot inline)",
-    "WAL write() dominated by syscall (17.6% flat) and time.Now (14.8% flat)",
+    "WAL encoder.encode 32% cum - blocked by DEFER (cannot inline), I/O-bound (40% syscall)",
+    "WAL write() dominated by syscall and GC, not compute-bound",
+    "txn Range: 627 allocs/op for 100 keys, escape analysis may help",
+    "txn checkLease cost 83, Count cost 92, IsTxnReadonly cost 92 - near threshold",
     "mvcc: cmpbody 35% flat (asm), runtime.mapassign 43% - not compiler-optimizable",
     "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
-    "backend tx_buffer.go: 20+ BCE in dedupe/merge/range blocked by struct field aliasing",
-    "txn range.go: BCE blocked by make->store->load breaking SSA len chain",
-    "Optimization frontier largely exhausted for all target packages at SSA level",
+    "backend tx_buffer.go: 20+ BCE blocked by struct field aliasing",
+    "Optimization frontier largely exhausted for mvcc and WAL at SSA level",
     "Remaining opportunities require interprocedural analysis or major infrastructure"
   ]
 }
