@@ -34,7 +34,7 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression"}
   ],
-  "last_run": {"date": "2026-05-02T12:38:00Z", "tasks_selected": [4,3,8], "tasks_executed": [3,8,9], "workflow_run_id": 25252039278, "notes": "Investigated lease package - same blockers (maps, mutexes). Frontier exhausted."},
+  "last_run": {"date": "2026-05-02T14:01:00Z", "tasks_selected": [4,5,8], "tasks_executed": [8,9], "workflow_run_id": 25253558064, "notes": "Frontier exhausted. Tasks 4/5 skipped - all backlog blocked."},
   "key_findings": [
     "mvcc: items.find indirect call through generic dictionary 25% cum - requires stenciling",
     "mvcc: cmpbody 12.3% flat - already optimized assembly",
