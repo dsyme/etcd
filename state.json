@@ -34,7 +34,7 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression"}
   ],
-  "last_run": {"date": "2026-05-02T18:37:00Z", "tasks_selected": [3,5,8], "tasks_executed": [8,9], "workflow_run_id": 25258961064, "notes": "Frontier exhausted. Tasks 3/5 skipped - all backlog blocked."},
+  "last_run": {"date": "2026-05-02T19:44:00Z", "tasks_selected": [3,5,8], "tasks_executed": [8,9], "workflow_run_id": 25260249972, "notes": "Frontier exhausted. Tasks 3/5 skipped - all backlog blocked."},
   "key_findings": [
     "mvcc: items.find indirect call through generic dictionary 25% cum - requires stenciling",
     "mvcc: cmpbody 12.3% flat - already optimized assembly",
