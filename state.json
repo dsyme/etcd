@@ -1,6 +1,6 @@
 {
-  "go_version": {"commit": "0af7dbf1", "date": "2026-05-01", "version": "go1.27-devel"},
-  "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-01"},
+  "go_version": {"commit": "8594bf4621", "date": "2026-05-01", "version": "go1.27-devel"},
+  "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-02"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
     {"name": "signed-sub-flowfacts", "improvement": "-4.81% geomean", "date": "2026-04-30"},
@@ -12,7 +12,7 @@
     {"name": "sort-search-closure-devirt", "priority": 5, "status": "untried", "note": "Complex: requires interprocedural devirtualization of sort.Interface calls"},
     {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Required for BCE in dedupe/walk/range - major compiler infrastructure change"},
     {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90; budget >=100 breaks runtime"},
-    {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "make→store→load breaks SSA len tracking for BCE in txn/range.go"},
+    {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "make->store->load breaks SSA len tracking for BCE in txn/range.go"},
     {"name": "stenciling-over-dictionaries", "priority": 7, "status": "investigated", "note": "would need major generics impl change"}
   ],
   "failed_attempts": [
@@ -32,7 +32,7 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression, icache pressure"}
   ],
-  "last_run": {"date": "2026-05-02T04:48:00Z", "tasks_selected": [5,4,8], "tasks_executed": [8,9], "workflow_run_id": 25244059414, "notes": "Frontier exhausted. All backlog items blocked. Status-only update."},
+  "last_run": {"date": "2026-05-02T07:15:00Z", "tasks_selected": [1,4,8], "tasks_executed": [1,8,9], "workflow_run_id": 25246616958, "notes": "Compiler refreshed to 8594bf4621. Frontier still exhausted. Status updates only."},
   "key_findings": [
     "WAL encoder.encode 49.7% cum - blocked by DEFER (cannot inline)",
     "WAL write() dominated by syscall (17.6% flat) and time.Now (14.8% flat)",
