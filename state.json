@@ -9,12 +9,13 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "txn-escape-analysis", "priority": 6, "status": "untried", "note": "txn Range: 627 allocs/op for 100 keys; checkLease cost 83, Count cost 92"},
-    {"name": "sort-search-closure-devirt", "priority": 5, "status": "untried", "note": "Complex: requires interprocedural devirtualization of sort.Interface calls"},
-    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Required for BCE in dedupe/walk/range - major compiler infrastructure change"},
-    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90; budget >=100 breaks runtime"},
-    {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "make->store->load breaks SSA len tracking for BCE in txn/range.go"},
-    {"name": "stenciling-over-dictionaries", "priority": 7, "status": "investigated", "note": "would need major generics impl change"}
+    {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "627 allocs/op dominated by map[Revision]struct{} in doCompact and closure escape through AscendGreaterOrEqual; not SSA-fixable"},
+    {"name": "sort-search-closure-devirt", "priority": 5, "status": "blocked", "note": "Requires interprocedural devirtualization"},
+    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Major compiler infrastructure change needed for BCE through function calls"},
+    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90; budget >=100 causes regressions"},
+    {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "append->store->load breaks SSA len tracking"},
+    {"name": "stenciling-over-dictionaries", "priority": 7, "status": "blocked", "note": "Major generics impl change needed"},
+    {"name": "unsafeVisit-inline", "priority": 5, "status": "blocked", "note": "cost 94 vs 80; inlining wouldn't help because closure still escapes through AscendGreaterOrEqual"}
   ],
   "failed_attempts": [
     {"name": "raise-inline-budget-85", "date": "2026-04-30", "reason": "no improvement"},
@@ -33,16 +34,16 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression, icache pressure"}
   ],
-  "last_run": {"date": "2026-05-02T09:05:00Z", "tasks_selected": [3,4,8], "tasks_executed": [3,8,9], "workflow_run_id": 25248308976, "notes": "Profiled WAL (I/O-bound), analyzed txn codegen. Added txn-escape-analysis to backlog."},
+  "last_run": {"date": "2026-05-02T10:36:00Z", "tasks_selected": [4,3,8], "tasks_executed": [3,8,9], "workflow_run_id": 25250003085, "notes": "Deep analysis of txn/lease/mvcc. Confirmed frontier exhausted: mvcc dominated by runtime.mapassign (47%), txn allocs from cross-package closure escape, lease blocked by DEFER. No new actionable SSA optimization found."},
   "key_findings": [
-    "WAL encoder.encode 32% cum - blocked by DEFER (cannot inline), I/O-bound (40% syscall)",
-    "WAL write() dominated by syscall and GC, not compute-bound",
-    "txn Range: 627 allocs/op for 100 keys, escape analysis may help",
-    "txn checkLease cost 83, Count cost 92, IsTxnReadonly cost 92 - near threshold",
-    "mvcc: cmpbody 35% flat (asm), runtime.mapassign 43% - not compiler-optimizable",
-    "All remaining mvcc BCE blocked by function calls or struct copies clobbering memory",
-    "backend tx_buffer.go: 20+ BCE blocked by struct field aliasing",
-    "Optimization frontier largely exhausted for mvcc and WAL at SSA level",
-    "Remaining opportunities require interprocedural analysis or major infrastructure"
+    "mvcc IndexCompact100: runtime.mapassign 47% cum, aeshashbody 11% - map operations dominate",
+    "mvcc IndexCompact1: mallocgc/newobject 42% - GC/allocation bound",
+    "txn Range 100 keys: 627 allocs, dominated by bbolt.Cursor.search (28%), rangeKeys (32%), closures (15%)",
+    "All closure escapes flow through cross-package AscendGreaterOrEqual - not SSA fixable",
+    "walk() BCE at line 362 blocked by memory aliasing through closure call f()",
+    "lease package blocked by DEFER (prevents inlining) and heap.Interface BCE",
+    "WAL encoder.encode 32% cum - blocked by DEFER, I/O-bound (40% syscall)",
+    "Optimization frontier confirmed exhausted for SSA-level changes",
+    "Remaining improvements require: interprocedural analysis, runtime changes, or source-level refactoring"
   ]
 }
