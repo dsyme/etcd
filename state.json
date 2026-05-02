@@ -34,13 +34,14 @@
     {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
     {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression"}
   ],
-  "last_run": {"date": "2026-05-02T11:33:00Z", "tasks_selected": [4,2,8], "tasks_executed": [2,8,9], "workflow_run_id": 25250937770, "notes": "Re-profiled with HEAD 8594bf46. WAL I/O-bound. mvcc unchanged. Frontier confirmed exhausted."},
+  "last_run": {"date": "2026-05-02T12:38:00Z", "tasks_selected": [4,3,8], "tasks_executed": [3,8,9], "workflow_run_id": 25252039278, "notes": "Investigated lease package - same blockers (maps, mutexes). Frontier exhausted."},
   "key_findings": [
     "mvcc: items.find indirect call through generic dictionary 25% cum - requires stenciling",
     "mvcc: cmpbody 12.3% flat - already optimized assembly",
     "mvcc: runtime.mapassign 9.3% cum - runtime, not compiler",
     "mvcc: GC 9.9% cum - allocation-bound paths",
     "WAL: 44% flat in syscall - I/O bound, no compiler optimization viable",
+    "lease: Grant/Revoke/Renew are map+mutex bound - same blockers as mvcc",
     "All remaining opportunities require interprocedural analysis or runtime changes",
     "SSA optimization frontier exhausted for this workload"
   ]
