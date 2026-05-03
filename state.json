@@ -19,7 +19,7 @@
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-03T10:39:00Z", "tasks_selected": [5,4,8], "tasks_executed": [8,9], "workflow_run_id": 25276871235, "notes": "Status-only. SSA frontier exhausted, all backlog blocked."},
+  "last_run": {"date": "2026-05-03T11:30:00Z", "tasks_selected": [4,3,8], "tasks_executed": [8,9], "workflow_run_id": 25277915523, "notes": "Status-only. SSA frontier exhausted, all backlog blocked."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "All remaining opportunities require interprocedural analysis or runtime changes",
