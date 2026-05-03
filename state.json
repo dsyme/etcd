@@ -9,42 +9,20 @@
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"},
     {"name": "stenciling-over-dictionaries", "priority": 7, "status": "blocked", "note": "Major generics change - 25% cum in items.find indirect calls"},
     {"name": "sort-search-closure-devirt", "priority": 5, "status": "blocked", "note": "Requires interprocedural devirt"},
-    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Major infrastructure - blocks BCE in walk reverse iteration"},
+    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Major infrastructure"},
     {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90"},
     {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "append breaks SSA len"},
     {"name": "unsafeVisit-inline", "priority": 5, "status": "blocked", "note": "cost 94, closure escapes"},
-    {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "g.revs[l-i-1] BCE blocked by map write aliasing SliceLen CSE"}
+    {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "map write aliasing prevents SliceLen CSE"},
+    {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
   ],
-  "failed_attempts": [
-    {"name": "raise-inline-budget-85", "date": "2026-04-30", "reason": "no improvement"},
-    {"name": "bce-walk-reverse-iteration", "date": "2026-04-30", "reason": "alias analysis needed"},
-    {"name": "enable-newinliner", "date": "2026-05-01", "reason": "no improvement without PGO"},
-    {"name": "nil-guard-inlining-discount", "date": "2026-05-01", "reason": "+5.53% regression"},
-    {"name": "strict-ordering-add-relations", "date": "2026-05-01", "reason": "no improvement"},
-    {"name": "zero-cost-break-continue-findgen", "date": "2026-05-01", "reason": "+6.68% regression"},
-    {"name": "prove-nonneg-ordering-bce", "date": "2026-05-01", "reason": "blocked by mapassign"},
-    {"name": "phi-of-uniform-adds-indvar", "date": "2026-05-01", "reason": "BCE blocked by aliasing"},
-    {"name": "inline-budget-82", "date": "2026-05-01", "reason": "+6.46% regression"},
-    {"name": "regalloc-spill-weight-around-calls", "date": "2026-05-01", "reason": "+4.14% regression"},
-    {"name": "inline-budget-84", "date": "2026-05-01", "reason": "+140% regression"},
-    {"name": "prove-signed-sub-facts", "date": "2026-05-01", "reason": "+25% regression"},
-    {"name": "leaf-inline-bonus-mutableChild", "date": "2026-05-01", "reason": "+1.98% regression"},
-    {"name": "midpoint-bce-prove", "date": "2026-05-01", "reason": "no BCE through loop phis"},
-    {"name": "addr-of-slice-elem-discount", "date": "2026-05-01", "reason": "+4.53% regression"}
-  ],
-  "last_run": {"date": "2026-05-02T23:29:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25264538348, "notes": "Task 3 re-analysis confirms frontier exhausted. Walk reverse-iteration BCE blocked by map write aliasing preventing SliceLen CSE. Generic dictionary indirect calls (25% cum) require stenciling."},
+  "failed_attempts_count": 15,
+  "last_run": {"date": "2026-05-03T01:22:00Z", "tasks_selected": [4,3,8], "tasks_executed": [8,9], "workflow_run_id": 25266569155, "notes": "SSA frontier exhausted. All backlog items blocked. Status-only run."},
   "key_findings": [
-    "mvcc: items.find indirect call through generic dictionary 25% cum - requires stenciling",
-    "mvcc: cmpbody 12.3% flat - already optimized assembly",
-    "mvcc: (*generation).walk 13.7% flat - reverse iteration BCE blocked by aliasing",
-    "mvcc: runtime.mapassign 9.3% cum - runtime, not compiler",
-    "mvcc: GC 9.9% cum - allocation-bound paths",
-    "WAL: 44% flat in syscall - I/O bound, no compiler optimization viable",
-    "lease: Grant/Revoke/Renew are map+mutex bound - same blockers as mvcc",
+    "SSA optimization frontier exhausted for this workload",
     "All remaining opportunities require interprocedural analysis or runtime changes",
-    "SSA optimization frontier exhausted for this workload"
+    "5 validated optimizations achieved: -9.85%, -4.81%, -7.48%, -2.01%, -2.89%"
   ]
 }
