@@ -12,20 +12,22 @@
     {"name": "stenciling-over-dictionaries", "priority": 7, "status": "blocked", "note": "Major generics change"},
     {"name": "sort-search-closure-devirt", "priority": 5, "status": "blocked", "note": "Requires interprocedural devirt"},
     {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Major infrastructure"},
-    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90"},
+    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 80"},
     {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "append breaks SSA len"},
     {"name": "unsafeVisit-inline", "priority": 5, "status": "blocked", "note": "cost 94, closure escapes"},
     {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "map write aliasing"},
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-03T14:15:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25281173075, "notes": "Rebuilt compiler. Profiled txn/BenchmarkRange: 70% mvcc, 21% bbolt, 17% GC. 70k allocs/op app-level. Frontier exhausted."},
+  "last_run": {"date": "2026-05-03T15:34:00Z", "tasks_selected": [4,5,8], "tasks_executed": [1,8,9], "workflow_run_id": 25283259124, "notes": "Rebuilt compiler at 28686722. Re-profiled IndexPut: cmpbody 34%, Less 18% (func call overhead), items.find 3%. Investigated CMPQconst→TESTQ (only 55 instances, <1byte savings). Confirmed all BCE eliminated. Frontier exhausted."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "All remaining opportunities require interprocedural analysis or runtime changes",
     "5 validated optimizations achieved: -9.85%, -4.81%, -7.48%, -2.01%, -2.89%",
     "WAL benchmarks are I/O-bound (45% syscall, 24% GC) — not compiler-improvable",
     "txn/Range: dominated by mvcc (70%), bbolt (21%), GC (17%), growslice (15%)",
-    "Revision map key uses optimal memhash128 already"
+    "Revision map key uses optimal memhash128 already",
+    "bytealg.Compare not an SSA intrinsic — cap arguments wastefully passed but not fixable without new intrinsic",
+    "Less is inlined (cost 71) at direct call sites but not through btree func pointer (generics dictionary)"
   ]
 }
