@@ -1,5 +1,5 @@
 {
-  "go_version": {"commit": "28686722", "date": "2026-05-02", "version": "go1.27-devel"},
+  "go_version": {"commit": "28686722", "date": "2026-05-03", "version": "go1.27-devel"},
   "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-03"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
@@ -19,12 +19,13 @@
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-03T12:45:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25279327853, "notes": "Rebuilt compiler. WAL profiled: I/O bound (45% syscall). Revision map uses memhash128. Frontier exhausted."},
+  "last_run": {"date": "2026-05-03T14:15:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25281173075, "notes": "Rebuilt compiler. Profiled txn/BenchmarkRange: 70% mvcc, 21% bbolt, 17% GC. 70k allocs/op app-level. Frontier exhausted."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "All remaining opportunities require interprocedural analysis or runtime changes",
     "5 validated optimizations achieved: -9.85%, -4.81%, -7.48%, -2.01%, -2.89%",
     "WAL benchmarks are I/O-bound (45% syscall, 24% GC) — not compiler-improvable",
+    "txn/Range: dominated by mvcc (70%), bbolt (21%), GC (17%), growslice (15%)",
     "Revision map key uses optimal memhash128 already"
   ]
 }
