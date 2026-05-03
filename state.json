@@ -19,7 +19,7 @@
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-03T16:32:00Z", "tasks_selected": [4,3,8], "tasks_executed": [8,9], "workflow_run_id": 25284579794, "notes": "SSA frontier exhausted. All backlog items blocked. Status-only update."},
+  "last_run": {"date": "2026-05-03T17:35:00Z", "tasks_selected": [5,3,8], "tasks_executed": [8,9], "workflow_run_id": 25285985188, "notes": "SSA frontier exhausted. All backlog items blocked. Status-only update."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "All remaining opportunities require interprocedural analysis or runtime changes",
@@ -27,7 +27,7 @@
     "WAL benchmarks are I/O-bound (45% syscall, 24% GC) — not compiler-improvable",
     "txn/Range: dominated by mvcc (70%), bbolt (21%), GC (17%), growslice (15%)",
     "Revision map key uses optimal memhash128 already",
-    "bytealg.Compare not an SSA intrinsic — cap arguments wastefully passed but not fixable without new intrinsic",
+    "bytealg.Compare not an SSA intrinsic — not fixable without new intrinsic",
     "Less is inlined (cost 71) at direct call sites but not through btree func pointer (generics dictionary)"
   ]
 }
