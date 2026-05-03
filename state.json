@@ -1,28 +1,29 @@
 {
-  "go_version": {"commit": "8594bf4621", "date": "2026-05-02", "version": "go1.27-devel"},
-  "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-02"},
+  "go_version": {"commit": "28686722", "date": "2026-05-02", "version": "go1.27-devel"},
+  "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-03"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
     {"name": "signed-sub-flowfacts", "improvement": "-4.81% geomean", "date": "2026-04-30"},
     {"name": "leaf-inline-bonus", "improvement": "-7.48% IndexCompact1M", "date": "2026-05-01"},
-    {"name": "zero-cost-break-continue", "improvement": "-2.01% IndexCompact1", "date": "2026-05-01"},
+    {"name": "zero-cost-break-continue", "improvement": "-2.01% IndexCompact1", "date": "2026-05-01", "note": "not reproducible on HEAD 28686722"},
     {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {"name": "stenciling-over-dictionaries", "priority": 7, "status": "blocked", "note": "Major generics change - 25% cum in items.find indirect calls"},
+    {"name": "stenciling-over-dictionaries", "priority": 7, "status": "blocked", "note": "Major generics change"},
     {"name": "sort-search-closure-devirt", "priority": 5, "status": "blocked", "note": "Requires interprocedural devirt"},
     {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Major infrastructure"},
     {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90"},
     {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "append breaks SSA len"},
     {"name": "unsafeVisit-inline", "priority": 5, "status": "blocked", "note": "cost 94, closure escapes"},
-    {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "map write aliasing prevents SliceLen CSE"},
+    {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "map write aliasing"},
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
   ],
-  "failed_attempts_count": 15,
-  "last_run": {"date": "2026-05-03T01:22:00Z", "tasks_selected": [4,3,8], "tasks_executed": [8,9], "workflow_run_id": 25266569155, "notes": "SSA frontier exhausted. All backlog items blocked. Status-only run."},
+  "failed_attempts_count": 16,
+  "last_run": {"date": "2026-05-03T05:07:00Z", "tasks_selected": [4,2,8], "tasks_executed": [1,2,4,8,9], "workflow_run_id": 25270455140, "notes": "Rebuilt compiler at new HEAD 28686722. Re-tested zero-cost-break-continue: findGeneration inlines (cost 81->80) but no benchmark improvement. SSA frontier confirmed."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "All remaining opportunities require interprocedural analysis or runtime changes",
-    "5 validated optimizations achieved: -9.85%, -4.81%, -7.48%, -2.01%, -2.89%"
+    "5 validated optimizations achieved: -9.85%, -4.81%, -7.48%, -2.01%, -2.89%",
+    "zero-cost-break-continue not reproducible on HEAD 28686722 (was on 87fe5faf)"
   ]
 }
