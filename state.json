@@ -19,11 +19,12 @@
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-03T11:30:00Z", "tasks_selected": [4,3,8], "tasks_executed": [8,9], "workflow_run_id": 25277915523, "notes": "Status-only. SSA frontier exhausted, all backlog blocked."},
+  "last_run": {"date": "2026-05-03T12:45:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25279327853, "notes": "Rebuilt compiler. WAL profiled: I/O bound (45% syscall). Revision map uses memhash128. Frontier exhausted."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "All remaining opportunities require interprocedural analysis or runtime changes",
     "5 validated optimizations achieved: -9.85%, -4.81%, -7.48%, -2.01%, -2.89%",
-    "Concrete generics instantiation already inlines BTree.Get; only shaped version (dictionary-passing) is over budget"
+    "WAL benchmarks are I/O-bound (45% syscall, 24% GC) — not compiler-improvable",
+    "Revision map key uses optimal memhash128 already"
   ]
 }
