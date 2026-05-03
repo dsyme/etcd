@@ -19,7 +19,7 @@
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-03T07:35:00Z", "tasks_selected": [3,4,8], "tasks_executed": [1,3,8,9], "workflow_run_id": 25273201705, "notes": "Confirmed SSA frontier. Concrete BTree.Get inlines (72), shaped doesn't (81). No new optimization."},
+  "last_run": {"date": "2026-05-03T09:09:00Z", "tasks_selected": [5,3,8], "tasks_executed": [8,9], "workflow_run_id": 25275068619, "notes": "Status-only. SSA frontier exhausted, all backlog blocked."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "All remaining opportunities require interprocedural analysis or runtime changes",
