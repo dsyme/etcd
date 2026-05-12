@@ -12,25 +12,26 @@
     {"name": "stenciling-over-dictionaries", "priority": 7, "status": "blocked", "note": "Major generics change"},
     {"name": "sort-search-closure-devirt", "priority": 5, "status": "blocked", "note": "Requires interprocedural devirt"},
     {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Major infrastructure"},
-    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 80"},
+    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90"},
     {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "append breaks SSA len"},
     {"name": "unsafeVisit-inline", "priority": 5, "status": "blocked", "note": "cost 94, closure escapes"},
     {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "map write aliasing"},
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"},
-    {"name": "loop-strength-reduction", "priority": 5, "status": "new", "note": "Struct index i*48 each iter vs increment"},
+    {"name": "loop-strength-reduction", "priority": 5, "status": "confirmed-no-pass", "note": "Go has no LSR; i*48 each iter"},
     {"name": "bytes-compare-less-pattern", "priority": 4, "status": "new", "note": "Source fix simpler"},
     {"name": "pgo-block-layout", "priority": 3, "status": "new", "note": "Profile-guided block placement"},
-    {"name": "loop-unrolling", "priority": 3, "status": "new", "note": "Walk/doCompact inner loops"}
+    {"name": "loop-unrolling", "priority": 3, "status": "new", "note": "No loop unrolling in Go"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-12T13:25:00Z", "tasks_selected": [3, 5], "tasks_executed": ["Task 3 (codegen analysis)", "Task 8 (status issue)", "Task 9 (STATUS.md PR)"], "workflow_run_id": 25737362478, "notes": "Task 5 substituted to Task 3 (no new modification). Confirmed HEAD 55089b9e same state. Frontier exhausted."},
+  "last_run": {"date": "2026-05-12T13:31:00Z", "tasks_selected": [5,3], "tasks_executed": ["task1-rebuild","task3-confirm-frontier"], "workflow_run_id": 25737669511, "notes": "Rebuilt side compiler at HEAD 55089b9e. Confirmed optimization frontier still exhausted. findGeneration cost 81 unchanged. No new opportunities."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
-    "Non-SSA frontier also largely exhausted",
+    "Non-SSA frontier also largely exhausted - main bottleneck is Go ABI (all caller-saved regs)",
     "5 validated optimizations achieved: -9.85%, -4.81%, -7.48%, -2.01%, -2.89%",
-    "Indirect call in items.find (CALL CX) = 20% of time, not devirtualizable",
-    "Go ABI has NO callee-saved GP registers - fundamental spill cost around every call",
-    "BTree.Get cost 81 and findGeneration cost 81 still just over budget at HEAD 55089b9e",
-    "No new upstream changes to inline/prove/rewrite since last analysis"
+    "Indirect call in items.find (CALL CX) = 20% of time, 7 spills per call, not devirtualizable",
+    "cmpbody = 34% flat, hand-written AVX2 asm, already optimal for 64-byte keys",
+    "No loop strength reduction in Go compiler - confirmed on HEAD 55089b9e",
+    "findGeneration cost 81 vs budget 80 - inlining causes bloat without deeper changes",
+    "Go ABI has NO callee-saved GP registers - fundamental spill cost around every call"
   ]
 }
