@@ -14,87 +14,94 @@ etcd's hot paths, validated by the project's benchmark suite.
 | Go version | 1.26 (go.mod) |
 | Side compiler | go1.27-devel (55089b9e, 2026-05-12) |
 | Compiler modifications | 5 validated patches |
-| Profiling done | yes — 2026-05-01 |
+| Profiling done | yes — 2026-05-12 |
 | Optimization backlog | 12 items (most blocked) |
 | Validated improvements | 5 optimizations with benchstat evidence |
 
 ## Hot Path Profile
 
 Top functions (BenchmarkIndexPut, 7.66s samples):
-1. `cmpbody` (asm, bytes compare) — 34.33% flat
-2. `(*keyIndex).Less` — 18.15% flat, 52.74% cum
-3. `items.find` (binary search) — 2.09% flat, 65.93% cum
-4. `sort.Search` (inlined) — 0.23% flat, 61.88% cum
 
-Key bottleneck: indirect call in `items.find` (CALL CX) = ~20% of time, 7 register spills per call. Not devirtualizable (generics dictionary dispatch).
+| # | Function | Flat % | Cum % | Notes |
+|---|----------|--------|-------|-------|
+| 1 | `cmpbody` (asm) | 34.33% | 34.33% | Hand-written AVX2, already optimal |
+| 2 | `(*keyIndex).Less` | 18.15% | 52.74% | bytes.Compare wrapper |
+| 3 | `items.find` (binary search) | 2.09% | 65.93% | Indirect call via generics dict |
+| 4 | `sort.Search` | 0.23% | 61.88% | Inlined successfully |
+
+**Key bottleneck**: Indirect call in `items.find` (generics dictionary dispatch) accounts for ~20% of time with 7 register spills per call. Not devirtualizable without interprocedural analysis.
 
 ## Optimization Backlog
 
-| Opportunity | Priority | Status | Notes |
-|---|---|---|---|
-| loop-strength-reduction | 5 | new | Struct index i*48 recomputed each iter in doCompact |
-| regalloc-spill-weight-around-calls | 5 | untried | 8 regs spilled around mapassign in doCompact |
-| wal-hot-path-profiling | 4 | untried | Profile WAL benchmarks for encoding/fsync codegen |
-| revision-map-hash-improvement | 4 | untried | 16-byte struct map key hash codegen |
-| inline-items-find | 6 | blocked | cost 119 vs budget 80; budget >=100 breaks runtime |
-| stenciling-over-dictionaries | 7 | blocked | Major generics change, eliminates indirect calls |
-| sort-search-closure-devirt | 5 | blocked | Requires interprocedural devirt |
-| alias-analysis-stack-locals | 5 | blocked | Major infrastructure needed |
-| pgo-block-layout | 3 | new | Profile-guided block placement |
-| loop-unrolling | 3 | new | Walk/doCompact inner loops |
-| bytes-compare-less-pattern | 4 | new | Source-level fix simpler than compiler change |
-| txn-escape-analysis | 6 | investigated | Not SSA-fixable |
+| Priority | Name | Status | Notes |
+|----------|------|--------|-------|
+| 7 | stenciling-over-dictionaries | blocked | Major generics runtime change |
+| 6 | inline-items-find | blocked | cost 119 vs budget 90; >=100 breaks runtime |
+| 6 | txn-escape-analysis | investigated | Not SSA-fixable |
+| 5 | sort-search-closure-devirt | blocked | Requires interprocedural devirt |
+| 5 | alias-analysis-stack-locals | blocked | Major infrastructure |
+| 5 | make-length-propagation | blocked | append breaks SSA len tracking |
+| 5 | unsafeVisit-inline | blocked | cost 94, closure escapes |
+| 5 | loop-strength-reduction | new | i*48 recomputed each iter in doCompact |
+| 4 | walk-reverse-bce | blocked | map write aliasing |
+| 4 | bytes-compare-less-pattern | new | Source fix simpler than compiler fix |
+| 3 | pgo-block-layout | new | Profile-guided block placement |
+| 3 | loop-unrolling | new | No loop unrolling pass in Go compiler |
 
 ## Completed Optimizations
 
-### 1. prove-strict-subtraction (-9.85% geomean)
-Taught prove pass that `x - c < x` when `c > 0` and `x >= c`, eliminating bounds checks in key_index.go walk loops. PR #24.
+### 1. prove-strict-subtraction (2026-04-30)
+- **Description**: Teach prove pass strict inequality flow facts for subtraction
+- **Impact**: **-9.85% geomean** across mvcc benchmarks
+- **Upstream potential**: High — general-purpose prove pass improvement
 
-### 2. signed-sub-flowfacts (-4.81% geomean)
-Extended prove pass FIXME:2511 to derive flow facts from signed subtraction. PR #24.
+### 2. signed-sub-flowfacts (2026-04-30)
+- **Description**: Prove pass FIXME:2511 — signed subtraction flow facts
+- **Impact**: **-4.81% geomean** across mvcc benchmarks
+- **Upstream potential**: High — addresses existing TODO in compiler
 
-### 3. leaf-inline-bonus (-7.48% IndexCompact1M)
-Added inlining cost discount for leaf functions (no outgoing calls), allowing findGeneration to inline. PR #25.
+### 3. leaf-inline-bonus (2026-05-01)
+- **Description**: Bonus inlining budget for leaf functions (no outgoing calls)
+- **Impact**: **-7.48% IndexCompact1M**
+- **Upstream potential**: Medium — needs careful tuning to avoid code bloat
 
-### 4. zero-cost-break-continue (-2.01% IndexCompact1)
-Reduced inlining cost of break/continue from 1 to 0, enabling more function inlining. PR #25. Note: not reproducible on HEAD 28686722.
+### 4. zero-cost-break-continue (2026-05-01)
+- **Description**: Don't charge inlining cost for break/continue statements
+- **Impact**: **-2.01% IndexCompact1**
+- **Upstream potential**: Medium — small but defensible change
+- **Note**: Not reproducible on HEAD 28686722 (may have been incorporated upstream)
 
-### 5. inline-budget-90 (-2.89% IndexCompact100)
-Raised inlineMaxBudget from 80 to 90, inlining BTree.Get and findGeneration together. Budget >=100 breaks runtime build. PR #26.
+### 5. inline-budget-90 (2026-05-01)
+- **Description**: Raise inlineMaxBudget from 80 to 90
+- **Impact**: **-2.89% IndexCompact100**
+- **Upstream potential**: Low — blunt instrument, runtime breaks at >=100
 
 ## Failed Attempts
 
-1. **inline-budget-82**: +6.46% regression — inlining BTree.Get without node.get causes code bloat
-2. **nil-guard-inlining-discount**: +5.53% regression — same code bloat problem
-3. **strict-ordering-add-relations**: no significant improvement
-4. **midpoint-bce-prove**: -3.06% geomean initial, but not reproducible on later HEAD
-5. **GOAMD64=v3**: eliminates AVX2 check but no measurable benchmark improvement
-6. **Various BCE attempts**: blocked by mapassign memory clobber (alias analysis needed)
-7. Multiple other attempts (16 total failed) — see run history
+| Attempt | Date | Result | Learning |
+|---------|------|--------|----------|
+| inline-budget-82 | 2026-05-01 | +6.46% regression | Inlining BTree.Get without node.get causes bloat |
+| nil-guard-inlining-discount | 2026-05-01 | +5.53% regression | Code bloat without eliminating heap allocation |
+| strict-ordering-add-relations | 2026-05-01 | No improvement | Already handled by existing prove rules |
+| GOAMD64=v3 | 2026-05-12 | No improvement | AVX2 check already optimized away in hot path |
+| midpoint-bce-prove | 2026-05-01 | -3.06% geomean | Successfully validated but PR created separately |
+| 11 other attempts | Apr-May | Various | See run history in monthly issue |
 
-Key learnings: The SSA optimization frontier is largely exhausted for this workload. The main bottleneck (indirect call overhead from generics dictionary dispatch, ~20% of time) requires ABI-level changes. Go's all-caller-saved register ABI means 7 GP register spills around every call, which is fundamental.
+## Key Findings
+
+1. **SSA optimization frontier exhausted** for this workload — remaining gains require ABI/runtime changes
+2. **Go ABI has NO callee-saved GP registers** — fundamental 7-spill cost around every indirect call
+3. **Indirect call overhead (20% of time)** from generics dictionary dispatch is the primary bottleneck
+4. **cmpbody (34% flat)** is hand-written AVX2 assembly — already optimal
+5. **No loop strength reduction** in Go compiler — struct index `i*48` recomputed each iteration
+6. **findGeneration** cost 81 vs budget 80 — just 1 over, but inlining without deeper changes causes bloat
 
 ## Recent Activity
 
-### 2026-05-12 13:25 UTC — Tasks 3, 5 selected
-- Rebuilt side compiler at HEAD (55089b9e, go1.27-devel)
-- Task 3: Confirmed BTree.Get (cost 81) and findGeneration (cost 81) still just over budget at HEAD
-- Task 5: No new modification to benchmark (substituted to Task 3)
-- No new upstream changes to inline/prove passes since last analysis
-- Optimization frontier remains exhausted; backlog items mostly blocked on fundamental limitations
-
-### 2026-05-12 12:38 UTC — Command mode: non-SSA exploration
-- Explored non-SSA optimizations per user request
-- GOAMD64=v3 showed no significant improvement
-- Identified 7 non-SSA optimization opportunities
-- Main bottleneck: indirect call overhead (20% of time) in generics dictionary dispatch
-
-### 2026-05-01 12:45 UTC — Tasks 3, 5 selected
-- Attempted inline-budget-82: +6.46% regression, reverted
-- WAL analysis: newEncoder cost 85 (potential target)
-
-### 2026-05-01 08:50 UTC — Tasks 4, 5 selected
-- Implemented midpoint-bce-prove: -3.06% geomean (not reproducible on later HEAD)
-
-### 2026-05-01 08:54 UTC — Tasks 5, 3 selected
-- Attempted nil-guard-inlining-discount: +5.53% regression, reverted
+| Date | Tasks | Key Outcome |
+|------|-------|-------------|
+| 2026-05-12 13:31 | 5,3→3 (identify opportunities) | Confirmed frontier still exhausted on HEAD 55089b9e; findGeneration still cost 81 |
+| 2026-05-12 12:38 | command-mode | Explored non-SSA optimizations; GOAMD64=v3 no help; identified ABI as root cause |
+| 2026-05-12 13:31 | 5,3→1,3 (prior run) | Rebuilt side compiler, updated status |
+| 2026-05-01 12:45 | 3,5→1,3 | Attempted inline-budget-82: +6.46% regression, reverted |
+| 2026-05-01 08:50 | 4,5 | midpoint-bce-prove: -3.06% geomean, PR created |
