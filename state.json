@@ -23,7 +23,7 @@
     {"name": "loop-unrolling", "priority": 3, "status": "new", "note": "No loop unrolling in Go"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-12T20:21:00Z", "tasks_selected": [4,5,8], "tasks_executed": ["task1-rebuild","task4-skip-frontier-exhausted","task5-skip-no-modification","task8-update","task9-update"], "workflow_run_id": 25759885085, "notes": "Rebuilt at HEAD a5a336cd. Re-profiled. Frontier still exhausted."},
+  "last_run": {"date": "2026-05-12T21:56:00Z", "tasks_selected": [3,4,8], "tasks_executed": ["task3-skip-frontier-exhausted","task4-skip-frontier-exhausted","task8-update","task9-update"], "workflow_run_id": 25764507506, "notes": "Frontier exhausted. Status update only."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "Non-SSA frontier also largely exhausted - main bottleneck is Go ABI (all caller-saved regs)",
