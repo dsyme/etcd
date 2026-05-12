@@ -1,6 +1,6 @@
 {
-  "go_version": {"commit": "28686722", "date": "2026-05-03", "version": "go1.27-devel"},
-  "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-03"},
+  "go_version": {"commit": "55089b9e", "date": "2026-05-12", "version": "go1.27-devel"},
+  "side_compiler": {"status": "built_ephemeral", "path": "/tmp/goopt/go", "last_validated": "2026-05-12"},
   "successful_optimizations": [
     {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
     {"name": "signed-sub-flowfacts", "improvement": "-4.81% geomean", "date": "2026-04-30"},
@@ -16,18 +16,26 @@
     {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "append breaks SSA len"},
     {"name": "unsafeVisit-inline", "priority": 5, "status": "blocked", "note": "cost 94, closure escapes"},
     {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "map write aliasing"},
-    {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"}
+    {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"},
+    {"name": "loop-strength-reduction", "priority": 5, "status": "new", "note": "Struct index recomputation in doCompact loop; i*48 each iter vs increment"},
+    {"name": "bytes-compare-less-pattern", "priority": 4, "status": "new", "note": "Compare(a,b)==-1 -> Compare(a,b)<0 saves 1 byte codegen; source fix simpler"},
+    {"name": "pgo-block-layout", "priority": 3, "status": "new", "note": "Profile-guided block placement for branch prediction"},
+    {"name": "loop-unrolling", "priority": 3, "status": "new", "note": "Walk/doCompact inner loops could benefit from unrolling"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-03T18:37:00Z", "tasks_selected": [5,3,8], "tasks_executed": [8,9], "workflow_run_id": 25287364923, "notes": "SSA frontier exhausted. All backlog items blocked. Status-only update."},
+  "last_run": {"date": "2026-05-12T12:38:00Z", "tasks_selected": "command-mode", "tasks_executed": ["non-SSA-exploration"], "workflow_run_id": 25734828823, "notes": "Explored non-SSA optimizations per user request. GOAMD64=v3 showed no significant improvement. Identified 7 non-SSA optimization opportunities. Main bottleneck is indirect call overhead (20% of time) in generics dictionary dispatch - not fixable without ABI changes."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
-    "All remaining opportunities require interprocedural analysis or runtime changes",
+    "Non-SSA frontier also largely exhausted - main bottleneck is Go ABI (all caller-saved regs)",
     "5 validated optimizations achieved: -9.85%, -4.81%, -7.48%, -2.01%, -2.89%",
-    "WAL benchmarks are I/O-bound (45% syscall, 24% GC) — not compiler-improvable",
-    "txn/Range: dominated by mvcc (70%), bbolt (21%), GC (17%), growslice (15%)",
-    "Revision map key uses optimal memhash128 already",
-    "bytealg.Compare not an SSA intrinsic — not fixable without new intrinsic",
-    "Less is inlined (cost 71) at direct call sites but not through btree func pointer (generics dictionary)"
+    "Indirect call in items.find (CALL CX) = 20% of time, 7 spills per call, not devirtualizable",
+    "cmpbody = 10% flat, hand-written AVX2 asm, already optimal for 64-byte keys",
+    "GOAMD64=v3 eliminates runtime AVX2 check but no measurable benchmark improvement",
+    "No loop strength reduction in Go - struct index i*48 recomputed each iteration",
+    "No loop unrolling in Go compiler",
+    "bytes.Compare(a,b)==-1 generates CMPQ+SETEQ; <0 would generate TESTQ+SETLT (1 byte smaller)",
+    "Layout pass is basic topological sort, no PGO-guided block placement",
+    "Remaining bounds checks in walk (reverse iteration) not eliminable by prove pass",
+    "Go ABI has NO callee-saved GP registers - fundamental spill cost around every call"
   ]
 }
