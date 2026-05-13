@@ -17,13 +17,13 @@
     {"name": "unsafeVisit-inline", "priority": 5, "status": "blocked", "note": "cost 94, closure escapes"},
     {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "map write aliasing"},
     {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"},
-    {"name": "loop-strength-reduction", "priority": 5, "status": "confirmed-no-pass", "note": "Go has no LSR; i*48 in doCompact but not on hot path"},
+    {"name": "loop-strength-reduction", "priority": 5, "status": "confirmed-no-pass", "note": "Go has no LSR; not hot"},
     {"name": "bytes-compare-less-pattern", "priority": 4, "status": "new", "note": "Source fix simpler"},
     {"name": "pgo-block-layout", "priority": 3, "status": "new", "note": "Profile-guided block placement"},
     {"name": "loop-unrolling", "priority": 3, "status": "new", "note": "No loop unrolling in Go"}
   ],
   "failed_attempts_count": 16,
-  "last_run": {"date": "2026-05-12T23:42:00Z", "tasks_selected": [3,5,8], "tasks_executed": ["task3-skip-frontier-exhausted","task5-skip-frontier-exhausted","task8-update","task9-update"], "workflow_run_id": 25768745853, "notes": "Frontier exhausted. Status update only."},
+  "last_run": {"date": "2026-05-13T01:29:00Z", "tasks_selected": [5,3,8], "tasks_executed": ["task3-skip-frontier-exhausted","task5-skip-frontier-exhausted","task8-update","task9-update"], "workflow_run_id": 25772480082, "notes": "Frontier exhausted. Status update only."},
   "key_findings": [
     "SSA optimization frontier exhausted for this workload",
     "Non-SSA frontier also largely exhausted - main bottleneck is Go ABI (all caller-saved regs)",
