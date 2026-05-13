@@ -10,122 +10,32 @@
     "last_validated": "2026-05-12"
   },
   "successful_optimizations": [
-    {
-      "name": "prove-strict-subtraction",
-      "improvement": "-9.85% geomean",
-      "date": "2026-04-30"
-    },
-    {
-      "name": "signed-sub-flowfacts",
-      "improvement": "-4.81% geomean",
-      "date": "2026-04-30"
-    },
-    {
-      "name": "leaf-inline-bonus",
-      "improvement": "-7.48% IndexCompact1M",
-      "date": "2026-05-01"
-    },
-    {
-      "name": "zero-cost-break-continue",
-      "improvement": "-2.01% IndexCompact1",
-      "date": "2026-05-01",
-      "note": "not reproducible on HEAD 28686722"
-    },
-    {
-      "name": "inline-budget-90",
-      "improvement": "-2.89% IndexCompact100",
-      "date": "2026-05-01"
-    }
+    {"name": "prove-strict-subtraction", "improvement": "-9.85% geomean", "date": "2026-04-30"},
+    {"name": "signed-sub-flowfacts", "improvement": "-4.81% geomean", "date": "2026-04-30"},
+    {"name": "leaf-inline-bonus", "improvement": "-7.48% IndexCompact1M", "date": "2026-05-01"},
+    {"name": "zero-cost-break-continue", "improvement": "-2.01% IndexCompact1", "date": "2026-05-01", "note": "not reproducible on HEAD 28686722"},
+    {"name": "inline-budget-90", "improvement": "-2.89% IndexCompact100", "date": "2026-05-01"}
   ],
   "backlog": [
-    {
-      "name": "stenciling-over-dictionaries",
-      "priority": 7,
-      "status": "blocked",
-      "note": "Major generics change"
-    },
-    {
-      "name": "sort-search-closure-devirt",
-      "priority": 5,
-      "status": "blocked",
-      "note": "Requires interprocedural devirt"
-    },
-    {
-      "name": "alias-analysis-stack-locals",
-      "priority": 5,
-      "status": "blocked",
-      "note": "Major infrastructure"
-    },
-    {
-      "name": "inline-items-find",
-      "priority": 6,
-      "status": "blocked",
-      "note": "cost 119 vs budget 90"
-    },
-    {
-      "name": "make-length-propagation",
-      "priority": 5,
-      "status": "blocked",
-      "note": "append breaks SSA len"
-    },
-    {
-      "name": "unsafeVisit-inline",
-      "priority": 5,
-      "status": "blocked",
-      "note": "cost 94, closure escapes"
-    },
-    {
-      "name": "walk-reverse-bce",
-      "priority": 4,
-      "status": "blocked",
-      "note": "map write aliasing"
-    },
-    {
-      "name": "txn-escape-analysis",
-      "priority": 6,
-      "status": "investigated",
-      "note": "Not SSA-fixable"
-    },
-    {
-      "name": "loop-strength-reduction",
-      "priority": 5,
-      "status": "confirmed-no-pass",
-      "note": "Go has no LSR; not hot"
-    },
-    {
-      "name": "bytes-compare-less-pattern",
-      "priority": 4,
-      "status": "new",
-      "note": "Source fix simpler"
-    },
-    {
-      "name": "pgo-block-layout",
-      "priority": 3,
-      "status": "new",
-      "note": "Profile-guided block placement"
-    },
-    {
-      "name": "loop-unrolling",
-      "priority": 3,
-      "status": "new",
-      "note": "No loop unrolling in Go"
-    }
+    {"name": "stenciling-over-dictionaries", "priority": 7, "status": "blocked", "note": "Major generics change"},
+    {"name": "sort-search-closure-devirt", "priority": 5, "status": "blocked", "note": "Requires interprocedural devirt"},
+    {"name": "alias-analysis-stack-locals", "priority": 5, "status": "blocked", "note": "Major infrastructure"},
+    {"name": "inline-items-find", "priority": 6, "status": "blocked", "note": "cost 119 vs budget 90"},
+    {"name": "make-length-propagation", "priority": 5, "status": "blocked", "note": "append breaks SSA len"},
+    {"name": "unsafeVisit-inline", "priority": 5, "status": "blocked", "note": "cost 94, closure escapes"},
+    {"name": "walk-reverse-bce", "priority": 4, "status": "blocked", "note": "map write aliasing"},
+    {"name": "txn-escape-analysis", "priority": 6, "status": "investigated", "note": "Not SSA-fixable"},
+    {"name": "loop-strength-reduction", "priority": 5, "status": "confirmed-no-pass", "note": "Go has no LSR; not hot"},
+    {"name": "bytes-compare-less-pattern", "priority": 4, "status": "new", "note": "Source fix simpler"},
+    {"name": "pgo-block-layout", "priority": 3, "status": "new", "note": "Profile-guided block placement"},
+    {"name": "loop-unrolling", "priority": 3, "status": "new", "note": "No loop unrolling in Go"}
   ],
   "failed_attempts_count": 16,
   "last_run": {
-    "date": "2026-05-13T08:25:00Z",
-    "tasks_selected": [
-      5,
-      3,
-      8
-    ],
-    "tasks_executed": [
-      "task5-skip-frontier-exhausted",
-      "task3-skip-frontier-exhausted",
-      "task8-update",
-      "task9-update"
-    ],
-    "workflow_run_id": 25787391736,
+    "date": "2026-05-13T11:16:00Z",
+    "tasks_selected": [4, 5, 8],
+    "tasks_executed": ["task4-skip-frontier-exhausted", "task5-skip-frontier-exhausted", "task8-update", "task9-update"],
+    "workflow_run_id": 25795607488,
     "notes": "Frontier exhausted. Status update only."
   },
   "key_findings": [
