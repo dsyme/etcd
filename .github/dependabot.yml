@@ -1,44 +1,39 @@
----
-version: 2
 updates:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /
-    schedule:
-      interval: weekly
-    allow:
-      - dependency-type: all
-
-  - package-ecosystem: gomod
-    directory: /tools/mod # Not linked from /go.mod
-    schedule:
-      interval: weekly
-    allow:
-      - dependency-type: direct
-
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: docker
-    directory: /
-    target-branch: "release-3.4"
-    schedule:
-      interval: monthly
-
-  - package-ecosystem: docker
-    directory: /
-    target-branch: "release-3.5"
-    schedule:
-      interval: monthly
-
-  - package-ecosystem: docker
-    directory: /
-    target-branch: "release-3.6"
-    schedule:
-      interval: monthly
+- directory: /
+  ignore:
+  - dependency-name: "github/gh-aw-actions" # Managed by gh aw compile. Version-locked to the gh-aw compiler; do not bump.
+  package-ecosystem: github-actions
+  schedule:
+    interval: weekly
+- allow:
+  - dependency-type: all
+  directory: /
+  package-ecosystem: gomod
+  schedule:
+    interval: weekly
+- allow:
+  - dependency-type: direct
+  directory: /tools/mod
+  package-ecosystem: gomod
+  schedule:
+    interval: weekly
+- directory: /
+  package-ecosystem: docker
+  schedule:
+    interval: weekly
+- directory: /
+  package-ecosystem: docker
+  schedule:
+    interval: monthly
+  target-branch: release-3.4
+- directory: /
+  package-ecosystem: docker
+  schedule:
+    interval: monthly
+  target-branch: release-3.5
+- directory: /
+  package-ecosystem: docker
+  schedule:
+    interval: monthly
+  target-branch: release-3.6
+version: 2
